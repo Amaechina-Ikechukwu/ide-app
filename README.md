@@ -1,56 +1,71 @@
-# Welcome to your Expo app ðŸ‘‹
+# IDE (Indicate Demand / Exchange) ??
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+IDE is a marketplace feed application built with React Native and Expo. It allows users to quickly post what they want to sell (SALE) or what they want to buy (REQUEST) without initial friction.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Zero-Friction Browsing & Posting:** Browse listings and post new items anonymously using device-based identity (UUID). 
+- **Auto-Expiring Posts:** Marketplace remains fresh; all posts naturally expire after **48 hours**.
+- **Dual Marketplace:** Filter the feed by **SALE** (people selling items) or **REQUEST** (people looking for items/offers).
+- **Token System:** Premium actions (like purchasing tokens) are managed via Firebase Auth and processed via Paystack (integrated using WebView).
+- **Direct Contact:** See a listing you like? Get the user's contact directly without complex in-app messaging.
 
-   ```bash
+## Tech Stack
+
+- **Framework:** [Expo](https://expo.dev) & React Native
+- **Navigation:** expo-router for file-based routing
+- **State Management:** zustand
+- **Networking:** xios
+- **Backend / Auth:** Firebase Auth & Firebase Storage
+- **Identity Storage:** expo-secure-store
+- **WebView (Payments):** eact-native-webview
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18+ recommended)
+- 
+pm or yarn
+- Expo CLI
+
+### Installation
+
+1. Install dependencies:
+   `ash
    npm install
-   ```
+   `
+   *(Note: if you encounter peer dependency issues with React Native packages, use \
+pm install --legacy-peer-deps\)*
 
-2. Start the app
+2. Environment Variables:
+   Create a \.env\ file in the root of the project using the \.env.example\ file as a template:
+   `env
+   EXPO_PUBLIC_FIREBASE_API_KEY=your_api_key
+   EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+   EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+   EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+   EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
+   `
 
-   ```bash
+3. Start the development server:
+   `ash
    npx expo start
-   ```
+   `
 
-In the output, you'll find options to open the app in a
+## Project Structure
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+`	ext
+src/
++-- app/                  # expo-router file structures (tabs, overlays, auth)
++-- components/           # Reusable UI components (PostCard, ExpiryBadge, Modals)
+¦   +-- ui/               # Lower-level styled building blocks
++-- lib/                  # Utilities (Axios config, Firebase init, Device UUID)
++-- store/                # Zustand global state manager (useStore)
++-- types/                # TypeScript interface definitions 
+`
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## AI Implementation Guide
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+To further extend or rebuild components of this app using AI companions, reference the \AI_IMPLEMENTATION_GUIDE.md\ provided in the root workspace. It contains stringent architectural constraints, schema details, and explicit guidance for file composition and endpoints within the IDE system.

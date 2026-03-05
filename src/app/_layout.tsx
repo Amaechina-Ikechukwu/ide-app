@@ -1,16 +1,54 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import React from 'react';
-import { useColorScheme } from 'react-native';
+import { LandingModal } from "@/components/LandingModal";
+import { useStore } from "@/store/useStore";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import React, { useEffect } from "react";
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+export default function RootLayout() {
+  const initDeviceId = useStore((s) => s.initDeviceId);
+  const fetchLanding = useStore((s) => s.fetchLanding);
+  const initAuth = useStore((s) => s.initAuth);
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  useEffect(() => {
+    initDeviceId();
+    fetchLanding();
+    const unsubscribe = initAuth();
+    return unsubscribe;
+  }, []);
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <>
+      <StatusBar style="dark" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="post/[id]"
+          options={{
+            headerShown: true,
+            title: "Post Details",
+            headerTintColor: "#2563EB",
+          }}
+        />
+        <Stack.Screen
+          name="auth/login"
+          options={{
+            presentation: "modal",
+            headerShown: true,
+            title: "Sign In",
+            headerTintColor: "#2563EB",
+          }}
+        />
+        <Stack.Screen
+          name="auth/register"
+          options={{
+            presentation: "modal",
+            headerShown: true,
+            title: "Create Account",
+            headerTintColor: "#2563EB",
+          }}
+        />
+      </Stack>
+      <LandingModal />
+    </>
   );
 }
