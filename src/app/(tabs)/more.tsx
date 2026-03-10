@@ -1,9 +1,12 @@
 import { useStore } from "@/store/useStore";
+import type { LandingContent } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
-    ActivityIndicator,
+    Dimensions,
     Linking,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -12,14 +15,58 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function MoreScreen() {
-  const landing = useStore((s) => s.landing);
-  const contact = useStore((s) => s.contact);
-  const fetchContact = useStore((s) => s.fetchContact);
+const { width: SCREEN_W } = Dimensions.get("window");
+const CARD_WIDTH = SCREEN_W - 32; // 16px padding each side
 
-  useEffect(() => {
-    fetchContact();
-  }, []);
+// Fallback contact info
+const FALLBACK_CONTACT = {
+  email: "marketbalogun@gmail.com",
+  phone: "08133470844",
+  whatsapp: "+2348133470844",
+};
+
+export default function MoreScreen() {
+  const landings = useStore((s) => s.landings);
+  const contact = useStore((s) => s.contact);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const carouselRef = useRef<ScrollView>(null);
+
+  // Use API contact or fallback
+  const displayContact = contact ?? FALLBACK_CONTACT;
+
+  // Filter announcements that have a headline
+  const announcements = landings.filter((l) => !!l.headline);
+
+  const onCarouselScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = e.nativeEvent.contentOffset.x;
+      const index = Math.round(offsetX / CARD_WIDTH);
+      setActiveSlide(index);
+    },
+    [],
+  );
+
+  const renderAnnouncementCard = (item: LandingContent, index: number) => (
+    <View key={index} style={[styles.announcementCard, { width: CARD_WIDTH }]}>
+      <View style={styles.updateBadge}>
+        <View style={styles.updateDot} />
+        <Text style={styles.updateText}>ANNOUNCEMENT</Text>
+      </View>
+      <Text style={styles.announcementTitle}>{item.headline}</Text>
+      <Text style={styles.announcementBody}>{item.body}</Text>
+      {item.ctaUrl && (
+        <Pressable
+          style={styles.ctaBtn}
+          onPress={() => Linking.openURL(item.ctaUrl!)}
+        >
+          <Text style={styles.ctaBtnText}>
+            {item.ctaText ?? "Learn more"}
+          </Text>
+          <Ionicons name="arrow-forward" size={16} color="#2563EB" />
+        </Pressable>
+      )}
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -31,29 +78,52 @@ export default function MoreScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Announcements Section */}
-        {landing?.headline ? (
+        {/* Announcements Carousel */}
+        {announcements.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Announcements</Text>
-            <View style={styles.announcementCard}>
-              <View style={styles.updateBadge}>
-                <View style={styles.updateDot} />
-                <Text style={styles.updateText}>UPDATE</Text>
-              </View>
-              <Text style={styles.announcementTitle}>{landing.headline}</Text>
-              <Text style={styles.announcementBody}>{landing.body}</Text>
-              {landing.ctaUrl && (
-                <Pressable
-                  style={styles.ctaBtn}
-                  onPress={() => Linking.openURL(landing.ctaUrl!)}
-                >
-                  <Text style={styles.ctaBtnText}>
-                    {landing.ctaText ?? "Learn more"}
-                  </Text>
-                  <Ionicons name="arrow-forward" size={16} color="#2563EB" />
-                </Pressable>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Announcements</Text>
+              {announcements.length > 1 && (
+                <Text style={styles.slideCounter}>
+                  {activeSlide + 1} / {announcements.length}
+                </Text>
               )}
             </View>
+
+            {announcements.length === 1 ? (
+              // Single announcement — no carousel needed
+              renderAnnouncementCard(announcements[0], 0)
+            ) : (
+              <>
+                <ScrollView
+                  ref={carouselRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
+                  snapToInterval={CARD_WIDTH}
+                  snapToAlignment="start"
+                  contentContainerStyle={styles.carouselContent}
+                  onScroll={onCarouselScroll}
+                  scrollEventThrottle={16}
+                >
+                  {announcements.map(renderAnnouncementCard)}
+                </ScrollView>
+
+                {/* Page indicators */}
+                <View style={styles.dotsRow}>
+                  {announcements.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.dot,
+                        i === activeSlide && styles.dotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         ) : null}
 
@@ -61,67 +131,65 @@ export default function MoreScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact Us</Text>
 
-          {!contact ? (
-            <ActivityIndicator color="#2563EB" style={{ marginTop: 20 }} />
-          ) : (
-            <View style={styles.contactCard}>
-              <Pressable
-                style={styles.contactRow}
-                onPress={() => Linking.openURL(`mailto:${contact.email}`)}
+          <View style={styles.contactCard}>
+            <Pressable
+              style={styles.contactRow}
+              onPress={() => Linking.openURL(`mailto:${displayContact.email}`)}
+            >
+              <View
+                style={[styles.contactIcon, { backgroundColor: "#FEF3C7" }]}
               >
-                <View
-                  style={[styles.contactIcon, { backgroundColor: "#FEF3C7" }]}
-                >
-                  <Ionicons name="mail" size={20} color="#D97706" />
-                </View>
-                <View style={styles.contactInfo}>
-                  <Text style={styles.contactLabel}>Email us</Text>
-                  <Text style={styles.contactValue}>{contact.email}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
-              </Pressable>
+                <Ionicons name="mail" size={20} color="#D97706" />
+              </View>
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactLabel}>Email us</Text>
+                <Text style={styles.contactValue}>{displayContact.email}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            </Pressable>
 
-              <View style={styles.contactDivider} />
+            <View style={styles.contactDivider} />
 
-              <Pressable
-                style={styles.contactRow}
-                onPress={() => Linking.openURL(`tel:${contact.phone}`)}
+            <Pressable
+              style={styles.contactRow}
+              onPress={() => Linking.openURL(`tel:${displayContact.phone}`)}
+            >
+              <View
+                style={[styles.contactIcon, { backgroundColor: "#DBEAFE" }]}
               >
-                <View
-                  style={[styles.contactIcon, { backgroundColor: "#DBEAFE" }]}
-                >
-                  <Ionicons name="call" size={20} color="#2563EB" />
-                </View>
-                <View style={styles.contactInfo}>
-                  <Text style={styles.contactLabel}>Call us</Text>
-                  <Text style={styles.contactValue}>{contact.phone}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
-              </Pressable>
+                <Ionicons name="call" size={20} color="#2563EB" />
+              </View>
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactLabel}>Call us</Text>
+                <Text style={styles.contactValue}>{displayContact.phone}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            </Pressable>
 
-              <View style={styles.contactDivider} />
+            <View style={styles.contactDivider} />
 
-              <Pressable
-                style={styles.contactRow}
-                onPress={() =>
-                  Linking.openURL(
-                    `https://wa.me/${contact.whatsapp.replace("+", "")}`,
-                  )
-                }
+            <Pressable
+              style={styles.contactRow}
+              onPress={() =>
+                Linking.openURL(
+                  `https://wa.me/${displayContact.whatsapp.replace("+", "")}`,
+                )
+              }
+            >
+              <View
+                style={[styles.contactIcon, { backgroundColor: "#D1FAE5" }]}
               >
-                <View
-                  style={[styles.contactIcon, { backgroundColor: "#D1FAE5" }]}
-                >
-                  <Ionicons name="logo-whatsapp" size={20} color="#16A34A" />
-                </View>
-                <View style={styles.contactInfo}>
-                  <Text style={styles.contactLabel}>WhatsApp</Text>
-                  <Text style={styles.contactValue}>{contact.whatsapp}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
-              </Pressable>
-            </View>
-          )}
+                <Ionicons name="logo-whatsapp" size={20} color="#16A34A" />
+              </View>
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactLabel}>WhatsApp</Text>
+                <Text style={styles.contactValue}>
+                  {displayContact.whatsapp}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            </Pressable>
+          </View>
         </View>
 
         {/* About */}
@@ -129,9 +197,9 @@ export default function MoreScreen() {
           <Text style={styles.sectionTitle}>About</Text>
           <View style={styles.aboutCard}>
             <Text style={styles.aboutText}>
-              IDE (Indicate Demand / Exchange) is a marketplace where you can
-              post sale listings or request items. Posts auto-expire after 48
-              hours. No sign-up required to browse or post.
+              IDE – Idemili Marketplace is a community marketplace for Idemili,
+              Anambra State. Post sale listings or request items you need. Posts
+              auto-expire after 48 hours. No sign-up required to browse or post.
             </Text>
             <Text style={styles.versionText}>Version 1.0.0</Text>
           </View>
@@ -154,11 +222,25 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 100 },
   section: { paddingHorizontal: 16, marginTop: 24 },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#1F2937",
-    marginBottom: 12,
+    marginBottom: 0,
+  },
+  slideCounter: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#9CA3AF",
+  },
+  carouselContent: {
+    gap: 12,
   },
   announcementCard: {
     backgroundColor: "#fff",
@@ -204,6 +286,23 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ctaBtnText: { fontSize: 14, fontWeight: "600", color: "#2563EB" },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#D1D5DB",
+  },
+  dotActive: {
+    backgroundColor: "#2563EB",
+    width: 20,
+  },
   contactCard: {
     backgroundColor: "#fff",
     borderRadius: 16,

@@ -28,7 +28,7 @@ export default function FeedScreen() {
   const feedLoading = useStore((s) => s.feedLoading);
   const setFeedFilter = useStore((s) => s.setFeedFilter);
   const fetchPosts = useStore((s) => s.fetchPosts);
-  const landing = useStore((s) => s.landing);
+  const landings = useStore((s) => s.landings);
   const user = useStore((s) => s.user);
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function FeedScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>IDE Marketplace</Text>
+        <Text style={styles.headerTitle}>Idemili Market</Text>
         {user ? (
           <Pressable
             style={styles.avatarBtn}
@@ -85,8 +85,8 @@ export default function FeedScreen() {
         ListHeaderComponent={
           <>
             {/* Announcement Banner */}
-            {landing?.headline ? (
-              <AnnouncementBanner landing={landing} />
+            {landings.length > 0 ? (
+              <AnnouncementBanner landings={landings} />
             ) : null}
 
             {/* Market Feed Header */}

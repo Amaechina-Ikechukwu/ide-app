@@ -1,23 +1,49 @@
 import type { LandingContent } from "@/types";
-import React from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useRef, useState } from "react";
+import {
+    Dimensions,
+    Image,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from "react-native";
+
+const { width: SCREEN_W } = Dimensions.get("window");
+const BANNER_WIDTH = SCREEN_W - 32; // 16px margin each side
 
 interface AnnouncementBannerProps {
-  landing: LandingContent;
+  landings: LandingContent[];
 }
 
-export function AnnouncementBanner({ landing }: AnnouncementBannerProps) {
-  return (
-    <View style={styles.container}>
-      {landing.imageUrl ? (
+export function AnnouncementBanner({ landings }: AnnouncementBannerProps) {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const announcements = landings.filter((l) => !!l.headline);
+
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const index = Math.round(e.nativeEvent.contentOffset.x / BANNER_WIDTH);
+      setActiveSlide(index);
+    },
+    [],
+  );
+
+  if (announcements.length === 0) return null;
+
+  const renderSlide = (item: LandingContent, index: number) => (
+    <View key={index} style={[styles.container, { width: BANNER_WIDTH }]}>
+      {item.imageUrl ? (
         <Image
-          source={{ uri: landing.imageUrl }}
+          source={{ uri: item.imageUrl }}
           style={styles.bgImage}
           resizeMode="cover"
         />
       ) : (
         <View style={styles.bgGradient}>
-          {/* Organic blob shapes matching the screenshot */}
           <View style={styles.blobTopRight} />
           <View style={styles.blobBottomLeft} />
           <View style={styles.blobCenter} />
@@ -28,22 +54,61 @@ export function AnnouncementBanner({ landing }: AnnouncementBannerProps) {
           <Text style={styles.badgeText}>ANNOUNCEMENT</Text>
         </View>
         <Text style={styles.headline} numberOfLines={2}>
-          {landing.headline}
+          {item.headline}
         </Text>
-        {landing.body ? (
+        {item.body ? (
           <Text style={styles.body} numberOfLines={2}>
-            {landing.body}
+            {item.body}
           </Text>
         ) : null}
+      </View>
+    </View>
+  );
+
+  // Single announcement — no carousel needed
+  if (announcements.length === 1) {
+    return <View style={styles.wrapper}>{renderSlide(announcements[0], 0)}</View>;
+  }
+
+  return (
+    <View style={styles.wrapper}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToInterval={BANNER_WIDTH}
+        snapToAlignment="start"
+        contentContainerStyle={styles.carouselContent}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+      >
+        {announcements.map(renderSlide)}
+      </ScrollView>
+
+      {/* Dot indicators */}
+      <View style={styles.dotsRow}>
+        {announcements.map((_, i) => (
+          <View
+            key={i}
+            style={[styles.dot, i === activeSlide && styles.dotActive]}
+          />
+        ))}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     marginHorizontal: 16,
     marginTop: 12,
+  },
+  carouselContent: {
+    gap: 12,
+  },
+  container: {
     borderRadius: 16,
     overflow: "hidden",
     height: 180,
@@ -117,5 +182,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "rgba(255,255,255,0.85)",
     lineHeight: 18,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  dotActive: {
+    backgroundColor: "#2563EB",
+    width: 16,
   },
 });

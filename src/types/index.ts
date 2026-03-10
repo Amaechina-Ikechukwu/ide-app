@@ -39,3 +39,60 @@ export interface Contact {
   phone: string;
   whatsapp: string;
 }
+
+export interface MessagingProfile {
+  uid: string;
+  displayName: string;
+  email: string | null;
+  avatarInitial: string;
+  updatedAt: number;
+}
+
+export interface ConversationParticipantSummary extends MessagingProfile {
+  lastReadAt?: number | null;
+}
+
+export interface ConversationRecord {
+  id: string;
+  postId: string;
+  postTitle: string;
+  postType: PostType;
+  postImageUrl: string | null;
+  postPrice: number | null;
+  createdAt: number;
+  updatedAt: number;
+  lastMessageText: string;
+  lastMessageAt: number | null;
+  lastMessageSenderId: string | null;
+  participantIds: string[];
+  participants: Record<string, ConversationParticipantSummary>;
+}
+
+export interface ConversationListItem {
+  conversationId: string;
+  postId: string;
+  postTitle: string;
+  postType: PostType;
+  postImageUrl: string | null;
+  postPrice: number | null;
+  createdAt: number;
+  updatedAt: number;
+  lastMessageText: string;
+  lastMessageAt: number | null;
+  lastMessageSenderId: string | null;
+  otherParticipantId: string;
+  otherParticipantName: string;
+  otherParticipantEmail: string | null;
+  otherParticipantInitial: string;
+  unreadCount: number;
+  lastReadAt?: number | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  text: string;
+  senderId: string;
+  senderName: string;
+  createdAt: number;
+}

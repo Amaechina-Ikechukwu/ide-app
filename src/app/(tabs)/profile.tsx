@@ -207,7 +207,7 @@ export default function ProfileScreen() {
         {/* About */}
         <View style={styles.aboutSection}>
           <Text style={styles.aboutText}>
-            IDE (Indicate Demand / Exchange)
+            IDE – Idemili Marketplace
           </Text>
           <Text style={styles.versionText}>Version 1.0.0</Text>
         </View>

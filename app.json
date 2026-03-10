@@ -17,7 +17,8 @@
         "backgroundImage": "./assets/images/adaptive-icon.png",
         "monochromeImage": "./assets/images/adaptive-icon.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.robinson_march.ideapp"
     },
     "web": {
       "output": "static",
@@ -42,6 +43,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "88d33f52-94a7-4a56-83fc-be3a9fda8fbb"
+      }
+    },
+    "owner": "robinson_march"
   }
 }

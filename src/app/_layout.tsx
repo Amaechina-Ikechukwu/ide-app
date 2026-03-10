@@ -5,13 +5,13 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 
 export default function RootLayout() {
-  const initDeviceId = useStore((s) => s.initDeviceId);
-  const fetchLanding = useStore((s) => s.fetchLanding);
-  const initAuth = useStore((s) => s.initAuth);
+  const initDeviceId = useStore((state) => state.initDeviceId);
+  const fetchLanding = useStore((state) => state.fetchLanding);
+  const initAuth = useStore((state) => state.initAuth);
 
   useEffect(() => {
-    initDeviceId();
-    fetchLanding();
+    void initDeviceId();
+    void fetchLanding();
     const unsubscribe = initAuth();
     return unsubscribe;
   }, []);
@@ -27,6 +27,12 @@ export default function RootLayout() {
             headerShown: true,
             title: "Post Details",
             headerTintColor: "#2563EB",
+          }}
+        />
+        <Stack.Screen
+          name="messages/[conversationId]"
+          options={{
+            headerShown: false,
           }}
         />
         <Stack.Screen

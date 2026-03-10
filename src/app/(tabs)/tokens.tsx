@@ -2,6 +2,7 @@ import { PaymentWebView } from "@/components/PaymentWebView";
 import { api } from "@/lib/api";
 import { auth, getIdToken } from "@/lib/auth";
 import { handleApiError } from "@/lib/handleApiError";
+import { formatCurrency } from "@/lib/formatters";
 import { useStore } from "@/store/useStore";
 import type { TokenBundle } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -200,7 +201,7 @@ export default function TokenStoreScreen() {
 
               <View style={styles.priceRow}>
                 <Text style={styles.bundlePrice}>
-                  ${bundle.price.toFixed(2)}
+                  {formatCurrency(bundle.price, bundle.currency, bundle.currency === "USD" ? 2 : 0)}
                 </Text>
                 <Text style={styles.bundleUnits}>/ {bundle.units}</Text>
               </View>
@@ -406,3 +407,4 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 });
+

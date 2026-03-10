@@ -1,22 +1,25 @@
 import { ExpiryBadge } from "@/components/ExpiryBadge";
 import { api } from "@/lib/api";
+import { formatCurrency } from "@/lib/formatters";
 import { getIdToken } from "@/lib/auth";
 import { getDeviceId } from "@/lib/deviceId";
 import { handleApiError } from "@/lib/handleApiError";
+import { createOrOpenConversation } from "@/lib/messaging";
+import { useStore } from "@/store/useStore";
 import type { Post } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -24,13 +27,17 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const user = useStore((state) => state.user);
+  const deviceId = useStore((state) => state.deviceId);
+
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [startingConversation, setStartingConversation] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
 
   useEffect(() => {
-    fetchPost();
+    void fetchPost();
   }, [id]);
 
   const fetchPost = async () => {
@@ -58,10 +65,10 @@ export default function PostDetailScreen() {
           onPress: async () => {
             setDeleting(true);
             try {
-              const deviceId = await getDeviceId();
+              const currentDeviceId = await getDeviceId();
               const token = await getIdToken();
               await api.delete(`/api/posts/${post.id}`, {
-                data: { deviceId },
+                data: { deviceId: currentDeviceId },
                 ...(token
                   ? { headers: { Authorization: `Bearer ${token}` } }
                   : {}),
@@ -77,6 +84,33 @@ export default function PostDetailScreen() {
         },
       ],
     );
+  };
+
+  const handleContact = async () => {
+    if (!post) {
+      return;
+    }
+
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
+
+    setStartingConversation(true);
+    try {
+      const conversationId = await createOrOpenConversation({
+        currentUser: user,
+        post,
+      });
+      router.push(`/messages/${conversationId}` as never);
+    } catch (err) {
+      Alert.alert(
+        "Messaging unavailable",
+        err instanceof Error ? err.message : "Unable to open chat.",
+      );
+    } finally {
+      setStartingConversation(false);
+    }
   };
 
   if (loading) {
@@ -97,42 +131,49 @@ export default function PostDetailScreen() {
 
   const accent = post.type === "SALE" ? "#4CAF50" : "#2563EB";
   const badge = post.type === "SALE" ? "SELLING" : "BUYING";
+  const canDelete = Boolean(
+    (user?.uid && post.userId && post.userId === user.uid) ||
+      (deviceId && post.deviceId === deviceId),
+  );
+  const showContactAction = !canDelete;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Image Gallery */}
       {post.imageUrls.length > 0 ? (
         <View style={styles.imageContainer}>
           <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(e) => {
-              const index = Math.round(
-                e.nativeEvent.contentOffset.x / SCREEN_WIDTH,
+            onMomentumScrollEnd={(event) => {
+              const nextIndex = Math.round(
+                event.nativeEvent.contentOffset.x / SCREEN_WIDTH,
               );
-              setImageIndex(index);
+              setImageIndex(nextIndex);
             }}
           >
-            {post.imageUrls.map((url, i) => (
+            {post.imageUrls.map((url, index) => (
               <Image
-                key={i}
+                key={index}
                 source={{ uri: url }}
                 style={styles.postImage}
                 resizeMode="cover"
               />
             ))}
           </ScrollView>
-          {post.imageUrls.length > 1 && (
+          {post.imageUrls.length > 1 ? (
             <View style={styles.dots}>
-              {post.imageUrls.map((_, i) => (
+              {post.imageUrls.map((_, index) => (
                 <View
-                  key={i}
-                  style={[styles.dot, i === imageIndex && styles.dotActive]}
+                  key={index}
+                  style={[
+                    styles.dot,
+                    index === imageIndex && styles.dotActive,
+                  ]}
                 />
               ))}
             </View>
-          )}
+          ) : null}
         </View>
       ) : (
         <View style={styles.noImage}>
@@ -144,7 +185,6 @@ export default function PostDetailScreen() {
         </View>
       )}
 
-      {/* Badge & Price */}
       <View style={styles.detailSection}>
         <View style={styles.badgeRow}>
           <View style={[styles.badge, { backgroundColor: accent }]}>
@@ -155,32 +195,29 @@ export default function PostDetailScreen() {
 
         <Text style={styles.title}>{post.title}</Text>
 
-        {post.price != null && (
+        {post.price != null ? (
           <Text style={[styles.price, { color: accent }]}>
             {post.type === "SALE"
-              ? `₦${post.price.toLocaleString()}`
-              : `Budget: ₦${post.price.toLocaleString()}`}
+              ? formatCurrency(post.price, post.currency)
+              : `Budget: ${formatCurrency(post.price, post.currency)}`}
           </Text>
-        )}
+        ) : null}
 
-        {/* Tags */}
-        {post.tags.length > 0 && (
+        {post.tags.length > 0 ? (
           <View style={styles.tagRow}>
-            {post.tags.map((tag, i) => (
-              <View key={i} style={styles.tag}>
+            {post.tags.map((tag, index) => (
+              <View key={index} style={styles.tag}>
                 <Text style={styles.tagText}>{tag}</Text>
               </View>
             ))}
           </View>
-        )}
+        ) : null}
 
-        {/* Description */}
         <View style={styles.descSection}>
           <Text style={styles.descLabel}>Description</Text>
           <Text style={styles.descText}>{post.description}</Text>
         </View>
 
-        {/* Meta */}
         <View style={styles.metaSection}>
           <View style={styles.metaRow}>
             <Ionicons name="time-outline" size={16} color="#9CA3AF" />
@@ -188,33 +225,45 @@ export default function PostDetailScreen() {
               Posted {new Date(post.createdAt).toLocaleDateString()}
             </Text>
           </View>
-          {post.isPremium && (
+          {post.isPremium ? (
             <View style={styles.metaRow}>
               <Ionicons name="diamond" size={16} color="#2563EB" />
               <Text style={[styles.metaText, { color: "#2563EB" }]}>
                 Premium listing
               </Text>
             </View>
-          )}
+          ) : null}
         </View>
 
-        {/* Actions */}
         <View style={styles.actions}>
-          <Pressable style={styles.contactBtn}>
-            <Ionicons name="chatbubble-outline" size={20} color="#fff" />
-            <Text style={styles.contactBtnText}>Contact Seller</Text>
-          </Pressable>
-          <Pressable
-            style={styles.deleteBtn}
-            onPress={handleDelete}
-            disabled={deleting}
-          >
-            {deleting ? (
-              <ActivityIndicator color="#EF4444" size="small" />
-            ) : (
-              <Ionicons name="trash-outline" size={20} color="#EF4444" />
-            )}
-          </Pressable>
+          {showContactAction ? (
+            <Pressable style={styles.contactBtn} onPress={handleContact}>
+              {startingConversation ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+                  <Text style={styles.contactBtnText}>
+                    {post.type === "SALE" ? "Message Seller" : "Message Buyer"}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          ) : null}
+
+          {canDelete ? (
+            <Pressable
+              style={styles.deleteBtn}
+              onPress={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <ActivityIndicator color="#EF4444" size="small" />
+              ) : (
+                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              )}
+            </Pressable>
+          ) : null}
         </View>
       </View>
     </ScrollView>
@@ -266,9 +315,19 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   badgeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  title: { fontSize: 24, fontWeight: "700", color: "#1F2937", marginBottom: 8 },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
   price: { fontSize: 22, fontWeight: "700", marginBottom: 12 },
-  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 16,
+  },
   tag: {
     backgroundColor: "#F3F4F6",
     paddingHorizontal: 12,
@@ -290,6 +349,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: 12 },
   contactBtn: {
     flex: 1,
+    minHeight: 50,
     flexDirection: "row",
     backgroundColor: "#2563EB",
     paddingVertical: 14,
@@ -309,3 +369,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 });
+
+

@@ -2,59 +2,56 @@ import { api } from "@/lib/api";
 import { auth, getIdToken, signOut } from "@/lib/auth";
 import { getDeviceId } from "@/lib/deviceId";
 import { handleApiError } from "@/lib/handleApiError";
+import { syncMessagingProfile } from "@/lib/messaging";
 import type {
-    Contact,
-    LandingContent,
-    Post,
-    PostType,
-    TokenBundle,
+  Contact,
+  LandingContent,
+  Post,
+  PostType,
+  TokenBundle,
 } from "@/types";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { create } from "zustand";
 
 interface AppState {
-  // Auth
   user: User | null;
   initAuth: () => () => void;
   logout: () => Promise<void>;
 
-  // Device
   deviceId: string | null;
   initDeviceId: () => Promise<void>;
 
-  // Feed
   posts: Post[];
   feedFilter: PostType | "ALL";
   feedLoading: boolean;
   setFeedFilter: (filter: PostType | "ALL") => void;
   fetchPosts: () => Promise<void>;
 
-  // Token balance
   balance: number | null;
   fetchBalance: () => Promise<void>;
 
-  // Token bundles
   bundles: TokenBundle[];
   fetchBundles: () => Promise<void>;
 
-  // Landing
+  landings: LandingContent[];
   landing: LandingContent | null;
   landingSeen: boolean;
   fetchLanding: () => Promise<void>;
   dismissLanding: () => void;
 
-  // Contact
   contact: Contact | null;
   fetchContact: () => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
-  // ── Auth ──
   user: auth.currentUser,
   initAuth: () => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       set({ user: u });
       if (u) {
+        void syncMessagingProfile(u).catch(() => {
+          // Messaging can be configured separately from auth.
+        });
         get().fetchBalance();
       } else {
         set({ balance: null });
@@ -67,14 +64,12 @@ export const useStore = create<AppState>((set, get) => ({
     set({ user: null, balance: null });
   },
 
-  // ── Device ──
   deviceId: null,
   initDeviceId: async () => {
     const id = await getDeviceId();
     set({ deviceId: id });
   },
 
-  // ── Feed ──
   posts: [],
   feedFilter: "ALL",
   feedLoading: false,
@@ -96,7 +91,6 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  // ── Tokens ──
   balance: null,
   fetchBalance: async () => {
     try {
@@ -121,21 +115,28 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  // ── Landing ──
+  landings: [],
   landing: null,
   landingSeen: false,
   fetchLanding: async () => {
     try {
       const { data } = await api.get("/api/landing");
-      const content: LandingContent = data.content ?? data;
-      set({ landing: content });
+      let items: LandingContent[];
+      if (Array.isArray(data.contents)) {
+        items = data.contents;
+      } else if (Array.isArray(data)) {
+        items = data;
+      } else {
+        const single: LandingContent = data.content ?? data;
+        items = [single];
+      }
+      set({ landings: items, landing: items[0] ?? null });
     } catch {
-      // silently ignore – not critical
+      // Landing content is optional.
     }
   },
   dismissLanding: () => set({ landingSeen: true }),
 
-  // ── Contact ──
   contact: null,
   fetchContact: async () => {
     try {

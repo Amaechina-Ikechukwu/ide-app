@@ -275,7 +275,7 @@ export default function CreatePostScreen() {
               color="#9CA3AF"
             />
             <Text style={styles.photoHintText}>
-              Add at least one photo to publish your listing.
+              Photos help your listing get noticed faster.
             </Text>
           </View>
         </View>
@@ -673,3 +673,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+

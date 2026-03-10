@@ -1,4 +1,5 @@
 import { ExpiryBadge } from "@/components/ExpiryBadge";
+import { formatCurrency } from "@/lib/formatters";
 import type { Post } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -10,23 +11,17 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onPress }: PostCardProps) {
-  const isSale = post.type === "SALE";
-
-  if (isSale) {
+  if (post.type === "SALE") {
     return <SaleCard post={post} onPress={onPress} />;
   }
+
   return <RequestCard post={post} onPress={onPress} />;
 }
 
-/* ──────────────────────────────────────────────
- * SELLING card – image left, content right
- * badge overlaid on image, price beside title
- * ────────────────────────────────────────────── */
 function SaleCard({ post, onPress }: PostCardProps) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.saleInner}>
-        {/* Image with badge overlay */}
         <View style={styles.saleImageWrap}>
           {post.imageUrls.length > 0 ? (
             <Image
@@ -39,32 +34,27 @@ function SaleCard({ post, onPress }: PostCardProps) {
               <Ionicons name="image-outline" size={32} color="#D1D5DB" />
             </View>
           )}
-          {/* SELLING badge on the image */}
           <View style={styles.sellingBadge}>
             <Text style={styles.sellingBadgeText}>SELLING</Text>
           </View>
         </View>
 
-        {/* Content */}
         <View style={styles.saleContent}>
-          {/* Title row with price */}
           <View style={styles.saleTitleRow}>
             <Text style={styles.saleTitle} numberOfLines={2}>
               {post.title}
             </Text>
-            {post.price != null && (
+            {post.price != null ? (
               <Text style={styles.salePrice}>
-                ${post.price.toLocaleString()}
+                {formatCurrency(post.price, post.currency)}
               </Text>
-            )}
+            ) : null}
           </View>
 
-          {/* Description */}
           <Text style={styles.saleDescription} numberOfLines={2}>
             {post.description}
           </Text>
 
-          {/* Footer */}
           <View style={styles.saleFooter}>
             <ExpiryBadge expiresAt={post.expiresAt} />
             <Ionicons name="arrow-forward" size={18} color="#9CA3AF" />
@@ -75,54 +65,38 @@ function SaleCard({ post, onPress }: PostCardProps) {
   );
 }
 
-/* ──────────────────────────────────────────────
- * BUYING / REQUEST card – no image on left,
- * BUYING badge top-right, icon placeholder right
- * ────────────────────────────────────────────── */
 function RequestCard({ post, onPress }: PostCardProps) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.requestInner}>
-        {/* Left content */}
         <View style={styles.requestContent}>
           <Text style={styles.requestTitle} numberOfLines={2}>
             {post.title}
           </Text>
 
-          {/* Price / budget label */}
-          {post.price != null && (
+          {post.price != null ? (
             <Text style={styles.requestBudget}>
-              Budget: ${post.price.toLocaleString()}
+              Budget: {formatCurrency(post.price, post.currency)}
             </Text>
-          )}
+          ) : null}
 
-          {/* Tags (Trade/Cash etc.) */}
-          {post.tags && post.tags.length > 0 && (
-            <Text style={styles.requestTags}>
-              {post.tags.join("/")}
-            </Text>
-          )}
+          {post.tags.length > 0 ? (
+            <Text style={styles.requestTags}>{post.tags.join("/")}</Text>
+          ) : null}
 
-          {/* Description */}
           <Text style={styles.requestDescription} numberOfLines={2}>
             {post.description}
           </Text>
 
-          {/* Footer */}
           <View style={styles.requestFooter}>
             <ExpiryBadge expiresAt={post.expiresAt} />
             <View style={styles.chatBtn}>
               <Text style={styles.chatText}>Chat</Text>
-              <Ionicons
-                name="chatbubble"
-                size={14}
-                color="#6B7280"
-              />
+              <Ionicons name="chatbubble" size={14} color="#6B7280" />
             </View>
           </View>
         </View>
 
-        {/* Right side – badge + icon/image */}
         <View style={styles.requestRight}>
           <View style={styles.buyingBadge}>
             <Text style={styles.buyingBadgeText}>BUYING</Text>
@@ -145,7 +119,6 @@ function RequestCard({ post, onPress }: PostCardProps) {
 }
 
 const styles = StyleSheet.create({
-  /* ── Shared ── */
   card: {
     marginHorizontal: 16,
     marginBottom: 12,
@@ -158,8 +131,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-
-  /* ── SALE card ── */
   saleInner: {
     flexDirection: "row",
   },
@@ -228,8 +199,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-
-  /* ── REQUEST card ── */
   requestInner: {
     flexDirection: "row",
     padding: 14,
