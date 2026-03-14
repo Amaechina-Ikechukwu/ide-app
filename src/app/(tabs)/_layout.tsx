@@ -1,9 +1,18 @@
+import { useStore } from "@/store/useStore";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
 import { StyleSheet } from "react-native";
 
 export default function TabsLayout() {
+  const unreadMessageCount = useStore((state) => state.unreadMessageCount);
+  const messageBadge =
+    unreadMessageCount > 0
+      ? unreadMessageCount > 99
+        ? "99+"
+        : unreadMessageCount
+      : undefined;
+
   return (
     <Tabs
       screenOptions={{
@@ -12,6 +21,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: "#9CA3AF",
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabLabel,
+        tabBarBadgeStyle: styles.tabBadge,
       }}
     >
       <Tabs.Screen
@@ -36,6 +46,7 @@ export default function TabsLayout() {
         name="messages"
         options={{
           title: "Messages",
+          tabBarBadge: messageBadge,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubble-outline" size={size} color={color} />
           ),
@@ -50,7 +61,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* Hide these from tab bar but keep routes working */}
       <Tabs.Screen
         name="create"
         options={{
@@ -85,5 +95,14 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 11,
     fontWeight: "600",
+  },
+  tabBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 999,
+    backgroundColor: "#DC2626",
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
   },
 });

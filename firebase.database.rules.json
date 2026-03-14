@@ -1,0 +1,216 @@
+{
+  "rules": {
+    "posts": {
+      ".read": true,
+      ".write": false,
+      ".indexOn": ["expiresAt", "userId"],
+      "$postId": {
+        ".read": true
+      }
+    },
+
+    "freePostCooldown": {
+      "$deviceId": {
+        ".read": true,
+        ".write": false
+      }
+    },
+
+    "tokenAccounts": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": false
+      }
+    },
+
+    "purchases": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": false
+      }
+    },
+
+    "pendingPurchases": {
+      ".read": false,
+      ".write": false
+    },
+
+    "landingContent": {
+      ".read": true,
+      ".write": false
+    },
+
+    "messagingProfiles": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid",
+        "uid": {
+          ".validate": "newData.isString() && newData.val() === auth.uid"
+        },
+        "displayName": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+        },
+        "email": {
+          ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 254)"
+        },
+        "avatarInitial": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 2"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+
+    "conversations": {
+      "$conversationId": {
+        ".read": "auth != null && data.child('participants/' + auth.uid).exists()",
+        ".write": "auth != null && newData.child('participants/' + auth.uid).exists()",
+        "id": {
+          ".validate": "newData.isString() && newData.val() === $conversationId"
+        },
+        "postId": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "postTitle": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 140"
+        },
+        "postType": {
+          ".validate": "newData.val() === 'SALE' || newData.val() === 'REQUEST'"
+        },
+        "postImageUrl": {
+          ".validate": "newData.val() === null || newData.isString()"
+        },
+        "postPrice": {
+          ".validate": "newData.val() === null || newData.isNumber()"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "lastMessageText": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "lastMessageAt": {
+          ".validate": "newData.val() === null || newData.isNumber()"
+        },
+        "lastMessageSenderId": {
+          ".validate": "newData.val() === null || (newData.isString() && newData.parent().child('participants/' + newData.val()).exists())"
+        },
+        "participantIds": {
+          ".validate": "newData.hasChildren()"
+        },
+        "participants": {
+          "$uid": {
+            ".validate": "newData.child('uid').exists() && newData.child('uid').val() === $uid && newData.child('displayName').isString() && newData.child('displayName').val().length > 0 && newData.child('displayName').val().length <= 80 && (!newData.child('email').exists() || newData.child('email').val() === null || newData.child('email').isString()) && newData.child('avatarInitial').isString() && newData.child('avatarInitial').val().length > 0 && newData.child('avatarInitial').val().length <= 2 && newData.child('updatedAt').isNumber() && (!newData.child('lastReadAt').exists() || newData.child('lastReadAt').val() === null || newData.child('lastReadAt').isNumber())"
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+
+    "userConversations": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".indexOn": ["updatedAt"],
+        "$conversationId": {
+          ".write": "auth != null && newData.parent().parent().parent().child('conversations/' + $conversationId + '/participants/' + auth.uid).exists() && newData.parent().parent().parent().child('conversations/' + $conversationId + '/participants/' + $uid).exists()",
+          "conversationId": {
+            ".validate": "newData.isString() && newData.val() === $conversationId"
+          },
+          "postId": {
+            ".validate": "newData.isString()"
+          },
+          "postTitle": {
+            ".validate": "newData.isString() && newData.val().length <= 140"
+          },
+          "postType": {
+            ".validate": "newData.val() === 'SALE' || newData.val() === 'REQUEST'"
+          },
+          "postImageUrl": {
+            ".validate": "newData.val() === null || newData.isString()"
+          },
+          "postPrice": {
+            ".validate": "newData.val() === null || newData.isNumber()"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "lastMessageText": {
+            ".validate": "newData.isString() && newData.val().length <= 500"
+          },
+          "lastMessageAt": {
+            ".validate": "newData.val() === null || newData.isNumber()"
+          },
+          "lastMessageSenderId": {
+            ".validate": "newData.val() === null || newData.isString()"
+          },
+          "otherParticipantId": {
+            ".validate": "newData.isString()"
+          },
+          "otherParticipantName": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+          },
+          "otherParticipantEmail": {
+            ".validate": "newData.val() === null || newData.isString()"
+          },
+          "otherParticipantInitial": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 2"
+          },
+          "unreadCount": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "lastReadAt": {
+            ".validate": "newData.val() === null || newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+
+    "messages": {
+      "$conversationId": {
+        ".read": "auth != null && root.child('conversations/' + $conversationId + '/participants/' + auth.uid).exists()",
+        ".indexOn": ["createdAt"],
+        "$messageId": {
+          ".write": "auth != null && root.child('conversations/' + $conversationId + '/participants/' + auth.uid).exists() && newData.child('senderId').val() === auth.uid",
+          "id": {
+            ".validate": "newData.isString() && newData.val() === $messageId"
+          },
+          "conversationId": {
+            ".validate": "newData.isString() && newData.val() === $conversationId"
+          },
+          "text": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+          },
+          "senderId": {
+            ".validate": "newData.isString() && newData.val() === auth.uid"
+          },
+          "senderName": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    }
+  }
+}
+
+

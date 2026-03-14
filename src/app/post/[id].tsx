@@ -1,28 +1,34 @@
-import { ExpiryBadge } from "@/components/ExpiryBadge";
+﻿import { ExpiryBadge } from "@/components/ExpiryBadge";
 import { api } from "@/lib/api";
-import { formatCurrency } from "@/lib/formatters";
 import { getIdToken } from "@/lib/auth";
 import { getDeviceId } from "@/lib/deviceId";
+import { formatCurrency } from "@/lib/formatters";
 import { handleApiError } from "@/lib/handleApiError";
-import { createOrOpenConversation } from "@/lib/messaging";
+import {
+    createOrOpenConversation,
+    isMessagingConfigured,
+    subscribeToPostHasMessages,
+} from "@/lib/messaging";
+import { normalizePost } from "@/lib/posts";
 import { useStore } from "@/store/useStore";
 import type { Post } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+type PostWithMessages = Post & { hasMessages: boolean };
 
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,11 +36,12 @@ export default function PostDetailScreen() {
   const user = useStore((state) => state.user);
   const deviceId = useStore((state) => state.deviceId);
 
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<PostWithMessages | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [startingConversation, setStartingConversation] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
+  const [messageLockActive, setMessageLockActive] = useState(false);
 
   useEffect(() => {
     void fetchPost();
@@ -43,7 +50,7 @@ export default function PostDetailScreen() {
   const fetchPost = async () => {
     try {
       const { data } = await api.get(`/api/posts/${id}`);
-      setPost(data.post ?? data);
+      setPost(normalizePost(data.post ?? data) as PostWithMessages);
     } catch (err) {
       handleApiError(err);
       router.back();
@@ -51,6 +58,26 @@ export default function PostDetailScreen() {
       setLoading(false);
     }
   };
+
+  const messagingReady = isMessagingConfigured();
+
+  useEffect(() => {
+    if (!post?.id) {
+      setMessageLockActive(false);
+      return;
+    }
+
+    if (!messagingReady || !user?.uid || !post.userId || post.userId !== user.uid) {
+      setMessageLockActive(Boolean(post.hasMessages));
+      return;
+    }
+
+    const unsubscribe = subscribeToPostHasMessages(user.uid, post.id, (hasMessages) => {
+      setMessageLockActive(Boolean(post.hasMessages || hasMessages));
+    });
+
+    return unsubscribe;
+  }, [messagingReady, post?.hasMessages, post?.id, post?.userId, user?.uid]);
 
   const handleDelete = async () => {
     if (!post) return;
@@ -84,6 +111,14 @@ export default function PostDetailScreen() {
         },
       ],
     );
+  };
+
+  const handleEdit = () => {
+    if (!post) {
+      return;
+    }
+
+    router.push({ pathname: "/edit-post", params: { id: post.id } } as never);
   };
 
   const handleContact = async () => {
@@ -133,9 +168,11 @@ export default function PostDetailScreen() {
   const badge = post.type === "SALE" ? "SELLING" : "BUYING";
   const canDelete = Boolean(
     (user?.uid && post.userId && post.userId === user.uid) ||
-      (deviceId && post.deviceId === deviceId),
+    (deviceId && post.deviceId === deviceId),
   );
-  const showContactAction = !canDelete;
+  const editingLocked = Boolean(post.hasMessages || messageLockActive);
+  const canEdit = canDelete && !editingLocked;
+  const showContactAction = messagingReady && !canDelete;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -166,10 +203,7 @@ export default function PostDetailScreen() {
               {post.imageUrls.map((_, index) => (
                 <View
                   key={index}
-                  style={[
-                    styles.dot,
-                    index === imageIndex && styles.dotActive,
-                  ]}
+                  style={[styles.dot, index === imageIndex && styles.dotActive]}
                 />
               ))}
             </View>
@@ -251,6 +285,22 @@ export default function PostDetailScreen() {
             </Pressable>
           ) : null}
 
+          {!messagingReady && !canDelete ? (
+            <View style={styles.infoBanner}>
+              <Ionicons name="chatbubbles-outline" size={18} color="#6B7280" />
+              <Text style={styles.infoBannerText}>
+                Messaging is not available in this build yet.
+              </Text>
+            </View>
+          ) : null}
+
+          {canEdit ? (
+            <Pressable style={styles.editBtn} onPress={handleEdit}>
+              <Ionicons name="create-outline" size={20} color="#2563EB" />
+              <Text style={styles.editBtnText}>Edit Listing</Text>
+            </Pressable>
+          ) : null}
+
           {canDelete ? (
             <Pressable
               style={styles.deleteBtn}
@@ -265,6 +315,15 @@ export default function PostDetailScreen() {
             </Pressable>
           ) : null}
         </View>
+
+        {canDelete && editingLocked ? (
+          <View style={[styles.infoBanner, styles.lockBanner]}>
+            <Ionicons name="lock-closed-outline" size={18} color="#92400E" />
+            <Text style={styles.infoBannerText}>
+              This listing can no longer be edited because someone has already sent a message.
+            </Text>
+          </View>
+        ) : null}
       </View>
     </ScrollView>
   );
@@ -346,7 +405,27 @@ const styles = StyleSheet.create({
   metaSection: { gap: 8, marginBottom: 24 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   metaText: { fontSize: 13, color: "#9CA3AF" },
-  actions: { flexDirection: "row", gap: 12 },
+  actions: { flexDirection: "row", alignItems: "center", gap: 12 },
+  infoBanner: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  lockBanner: {
+    marginTop: 12,
+    backgroundColor: "#FEF3C7",
+  },
+  infoBannerText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#6B7280",
+    lineHeight: 20,
+  },
   contactBtn: {
     flex: 1,
     minHeight: 50,
@@ -359,6 +438,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   contactBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  editBtn: {
+    flex: 1,
+    minHeight: 50,
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    backgroundColor: "#EFF6FF",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  editBtnText: { color: "#2563EB", fontSize: 15, fontWeight: "700" },
   deleteBtn: {
     width: 50,
     height: 50,
@@ -369,5 +462,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 });
+
+
 
 

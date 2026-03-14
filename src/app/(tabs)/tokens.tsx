@@ -3,6 +3,10 @@ import { api } from "@/lib/api";
 import { auth, getIdToken } from "@/lib/auth";
 import { handleApiError } from "@/lib/handleApiError";
 import { formatCurrency } from "@/lib/formatters";
+import {
+  normalizePaystackCheckoutSession,
+  type PaystackCheckoutSession,
+} from "@/lib/payments";
 import { useStore } from "@/store/useStore";
 import type { TokenBundle } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,6 +14,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Modal,
     Pressable,
     ScrollView,
@@ -60,13 +65,36 @@ export default function TokenStoreScreen() {
   const fetchBundles = useStore((s) => s.fetchBundles);
   const fetchBalance = useStore((s) => s.fetchBalance);
 
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [paymentSession, setPaymentSession] =
+    useState<PaystackCheckoutSession | null>(null);
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBundles();
     fetchBalance();
   }, []);
+
+  const refreshBalanceAfterPayment = async () => {
+    const previousBalance = useStore.getState().balance;
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      await fetchBalance();
+
+      const nextBalance = useStore.getState().balance;
+      if (
+        previousBalance === null ||
+        nextBalance === null ||
+        nextBalance !== previousBalance ||
+        attempt === 3
+      ) {
+        return;
+      }
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 1200 * (attempt + 1));
+      });
+    }
+  };
 
   const handleBuy = async (bundle: TokenBundle) => {
     const user = auth.currentUser;
@@ -83,7 +111,17 @@ export default function TokenStoreScreen() {
         { bundle: bundle.id, email: user.email },
         { headers: { Authorization: `Bearer ${token}` } },
       );
-      setPaymentUrl(data.paymentUrl);
+      const session = normalizePaystackCheckoutSession(data);
+
+      if (!session) {
+        Alert.alert(
+          "Payment unavailable",
+          "The server did not return a valid Paystack checkout session.",
+        );
+        return;
+      }
+
+      setPaymentSession(session);
     } catch (err) {
       handleApiError(err);
     } finally {
@@ -92,8 +130,8 @@ export default function TokenStoreScreen() {
   };
 
   const handlePaymentSuccess = () => {
-    setPaymentUrl(null);
-    fetchBalance();
+    setPaymentSession(null);
+    void refreshBalanceAfterPayment();
   };
 
   return (
@@ -249,18 +287,19 @@ export default function TokenStoreScreen() {
 
         {/* Disclaimer */}
         <Text style={styles.disclaimer}>
-          Tokens do not expire. Purchases are final. By{"\n"}continuing, you
-          agree to our Terms of Service.
+          Secure checkout is powered by Paystack. Tokens do not expire.
+          Purchases are final. By{"\n"}continuing, you agree to our Terms of
+          Service.
         </Text>
       </ScrollView>
 
       {/* Payment WebView Modal */}
-      <Modal visible={!!paymentUrl} animationType="slide">
-        {paymentUrl && (
+      <Modal visible={!!paymentSession} animationType="slide">
+        {paymentSession && (
           <PaymentWebView
-            paymentUrl={paymentUrl}
+            session={paymentSession}
             onSuccess={handlePaymentSuccess}
-            onFail={() => setPaymentUrl(null)}
+            onFail={() => setPaymentSession(null)}
           />
         )}
       </Modal>

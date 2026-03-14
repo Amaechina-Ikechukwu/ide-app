@@ -1,23 +1,23 @@
 import type {
-  ChatMessage,
-  ConversationListItem,
-  ConversationParticipantSummary,
-  ConversationRecord,
-  MessagingProfile,
-  Post,
-  PostType,
+    ChatMessage,
+    ConversationListItem,
+    ConversationParticipantSummary,
+    ConversationRecord,
+    MessagingProfile,
+    Post,
+    PostType,
 } from "@/types";
 import type { User } from "firebase/auth";
 import {
-  get,
-  increment,
-  limitToLast,
-  onValue,
-  orderByChild,
-  push,
-  query,
-  ref,
-  update,
+    get,
+    increment,
+    limitToLast,
+    onValue,
+    orderByChild,
+    push,
+    query,
+    ref,
+    update,
 } from "firebase/database";
 
 import { realtimeDb } from "../../firebaseConfig";
@@ -59,8 +59,19 @@ function getAvatarInitial(displayName: string) {
   return displayName.trim().charAt(0).toUpperCase() || "U";
 }
 
+function clampDisplayName(value: string) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return "Marketplace user";
+  }
+
+  return trimmedValue.slice(0, 80);
+}
+
 function buildProfileFromUser(user: User): MessagingProfile {
-  const displayName = user.displayName?.trim() || getFallbackDisplayName(user.email);
+  const displayName = clampDisplayName(
+    user.displayName?.trim() || getFallbackDisplayName(user.email),
+  );
 
   return {
     uid: user.uid,
@@ -72,11 +83,13 @@ function buildProfileFromUser(user: User): MessagingProfile {
 }
 
 function buildFallbackProfile(uid: string, label: string): MessagingProfile {
+  const displayName = clampDisplayName(label);
+
   return {
     uid,
-    displayName: label,
+    displayName,
     email: null,
-    avatarInitial: getAvatarInitial(label),
+    avatarInitial: getAvatarInitial(displayName),
     updatedAt: Date.now(),
   };
 }
@@ -86,7 +99,9 @@ function normalizeProfile(
   value: Partial<MessagingProfile> | null | undefined,
   fallbackLabel = "Marketplace user",
 ): MessagingProfile {
-  const displayName = value?.displayName?.trim() || fallbackLabel;
+  const displayName = clampDisplayName(
+    value?.displayName?.trim() || fallbackLabel,
+  );
 
   return {
     uid,
@@ -156,7 +171,11 @@ function normalizeConversationRecord(
   const participants = Object.fromEntries(
     Object.entries(value?.participants ?? {}).map(([uid, participant]) => [
       uid,
-      normalizeProfile(uid, participant as Partial<MessagingProfile>, "Marketplace user"),
+      normalizeProfile(
+        uid,
+        participant as Partial<MessagingProfile>,
+        "Marketplace user",
+      ),
     ]),
   ) as Record<string, ConversationParticipantSummary>;
 
@@ -204,7 +223,32 @@ async function getMessagingProfile(uid: string) {
     return null;
   }
 
-  return normalizeProfile(uid, snapshot.val() as Partial<MessagingProfile>, "Marketplace user");
+  return normalizeProfile(
+    uid,
+    snapshot.val() as Partial<MessagingProfile>,
+    "Marketplace user",
+  );
+}
+
+function isPermissionDeniedError(error: unknown) {
+  return (
+    error instanceof Error &&
+    /permission[_ ]denied/i.test(error.message)
+  );
+}
+
+async function getConversationSnapshotIfAccessible(conversationId: string) {
+  try {
+    return await get(ref(realtimeDb, `${CONVERSATIONS_PATH}/${conversationId}`));
+  } catch (error) {
+    // New conversations are not readable until the current user is written
+    // into the participants list by the bootstrap write.
+    if (isPermissionDeniedError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export function isMessagingConfigured() {
@@ -244,20 +288,31 @@ export async function createOrOpenConversation({
     throw new Error("You cannot message your own listing.");
   }
 
-  const conversationId = getConversationId(post.id, currentUser.uid, post.userId);
+  const conversationId = getConversationId(
+    post.id,
+    currentUser.uid,
+    post.userId,
+  );
   const now = Date.now();
   const senderProfile = await syncMessagingProfile(currentUser);
   const recipientProfile =
     (await getMessagingProfile(post.userId)) ??
-    buildFallbackProfile(post.userId, post.type === "SALE" ? "Seller" : "Buyer");
+    buildFallbackProfile(
+      post.userId,
+      post.type === "SALE" ? "Seller" : "Buyer",
+    );
 
-  const [conversationSnapshot, senderSummarySnapshot, recipientSummarySnapshot] = await Promise.all([
-    get(ref(realtimeDb, `${CONVERSATIONS_PATH}/${conversationId}`)),
-    get(ref(realtimeDb, `${USER_CONVERSATIONS_PATH}/${currentUser.uid}/${conversationId}`)),
-    get(ref(realtimeDb, `${USER_CONVERSATIONS_PATH}/${post.userId}/${conversationId}`)),
+  const [conversationSnapshot, senderSummarySnapshot] = await Promise.all([
+    getConversationSnapshotIfAccessible(conversationId),
+    get(
+      ref(
+        realtimeDb,
+        `${USER_CONVERSATIONS_PATH}/${currentUser.uid}/${conversationId}`,
+      ),
+    ),
   ]);
 
-  const existingConversation = conversationSnapshot.exists()
+  const existingConversation = conversationSnapshot?.exists()
     ? normalizeConversationRecord(
         conversationId,
         conversationSnapshot.val() as Partial<ConversationRecord>,
@@ -267,12 +322,6 @@ export async function createOrOpenConversation({
     ? normalizeConversationSummary(
         conversationId,
         senderSummarySnapshot.val() as Partial<ConversationListItem>,
-      )
-    : null;
-  const existingRecipientSummary = recipientSummarySnapshot.exists()
-    ? normalizeConversationSummary(
-        conversationId,
-        recipientSummarySnapshot.val() as Partial<ConversationListItem>,
       )
     : null;
 
@@ -294,7 +343,8 @@ export async function createOrOpenConversation({
       [currentUser.uid]: {
         ...senderProfile,
         lastReadAt:
-          existingConversation?.participants?.[currentUser.uid]?.lastReadAt ?? now,
+          existingConversation?.participants?.[currentUser.uid]?.lastReadAt ??
+          now,
       },
       [post.userId]: {
         ...recipientProfile,
@@ -311,21 +361,32 @@ export async function createOrOpenConversation({
   };
   const recipientSummary = {
     ...buildConversationSummary(conversationId, conversation, senderProfile),
-    unreadCount: existingRecipientSummary?.unreadCount ?? 0,
-    lastReadAt: existingRecipientSummary?.lastReadAt ?? null,
+    unreadCount: 0,
+    lastReadAt: null,
   };
 
-  await update(ref(realtimeDb), {
-    [`${CONVERSATIONS_PATH}/${conversationId}`]: conversation,
+  // Persist the conversation shell first so first-contact summary writes
+  // are authorized by the current database rules.
+  await update(
+    ref(realtimeDb, `${CONVERSATIONS_PATH}/${conversationId}`),
+    conversation,
+  );
+
+  const summaryUpdates: Record<string, ConversationListItem> = {
     [`${USER_CONVERSATIONS_PATH}/${currentUser.uid}/${conversationId}`]: {
       ...(existingSenderSummary ?? {}),
       ...senderSummary,
     },
-    [`${USER_CONVERSATIONS_PATH}/${post.userId}/${conversationId}`]: {
-      ...(existingRecipientSummary ?? {}),
-      ...recipientSummary,
-    },
-  });
+  };
+
+  if (!existingConversation) {
+    // The other participant's inbox summary is private to them, so only
+    // create it during the initial conversation bootstrap.
+    summaryUpdates[`${USER_CONVERSATIONS_PATH}/${post.userId}/${conversationId}`] =
+      recipientSummary;
+  }
+
+  await update(ref(realtimeDb), summaryUpdates);
 
   return conversationId;
 }
@@ -352,6 +413,30 @@ export function subscribeToUserConversations(
         .sort((left, right) => right.updatedAt - left.updatedAt);
 
       onChange(items);
+    },
+  );
+}
+
+export function subscribeToPostHasMessages(
+  userId: string,
+  postId: string,
+  onChange: (hasMessages: boolean) => void,
+) {
+  ensureMessagingConfigured();
+
+  return onValue(
+    ref(realtimeDb, `${USER_CONVERSATIONS_PATH}/${userId}`),
+    (snapshot) => {
+      const hasMessages = Object.values(
+        (snapshot.val() as Record<string, Partial<ConversationListItem>>) ?? {},
+      ).some(
+        (value) =>
+          value?.postId === postId &&
+          typeof value?.lastMessageAt === "number" &&
+          Number.isFinite(value.lastMessageAt),
+      );
+
+      onChange(hasMessages);
     },
   );
 }
@@ -408,14 +493,18 @@ export function subscribeToConversationMessages(
   );
 }
 
-export async function markConversationAsRead(userId: string, conversationId: string) {
+export async function markConversationAsRead(
+  userId: string,
+  conversationId: string,
+) {
   ensureMessagingConfigured();
   const now = Date.now();
 
   await update(ref(realtimeDb), {
     [`${USER_CONVERSATIONS_PATH}/${userId}/${conversationId}/unreadCount`]: 0,
     [`${USER_CONVERSATIONS_PATH}/${userId}/${conversationId}/lastReadAt`]: now,
-    [`${CONVERSATIONS_PATH}/${conversationId}/participants/${userId}/lastReadAt`]: now,
+    [`${CONVERSATIONS_PATH}/${conversationId}/participants/${userId}/lastReadAt`]:
+      now,
   });
 }
 
@@ -449,7 +538,9 @@ export async function sendConversationMessage({
     conversationSnapshot.val() as Partial<ConversationRecord>,
   );
   const now = Date.now();
-  const messageRef = push(ref(realtimeDb, `${MESSAGES_PATH}/${conversationId}`));
+  const messageRef = push(
+    ref(realtimeDb, `${MESSAGES_PATH}/${conversationId}`),
+  );
 
   if (!messageRef.key) {
     throw new Error("Unable to create message.");
@@ -468,20 +559,23 @@ export async function sendConversationMessage({
     [`${MESSAGES_PATH}/${conversationId}/${message.id}`]: message,
     [`${CONVERSATIONS_PATH}/${conversationId}/lastMessageText`]: trimmedText,
     [`${CONVERSATIONS_PATH}/${conversationId}/lastMessageAt`]: now,
-    [`${CONVERSATIONS_PATH}/${conversationId}/lastMessageSenderId`]: currentUser.uid,
+    [`${CONVERSATIONS_PATH}/${conversationId}/lastMessageSenderId`]:
+      currentUser.uid,
     [`${CONVERSATIONS_PATH}/${conversationId}/updatedAt`]: now,
-    [`${CONVERSATIONS_PATH}/${conversationId}/participants/${currentUser.uid}`]: {
-      ...(conversation.participants[currentUser.uid] ?? {}),
-      ...senderProfile,
-      lastReadAt: now,
-    },
+    [`${CONVERSATIONS_PATH}/${conversationId}/participants/${currentUser.uid}`]:
+      {
+        ...(conversation.participants[currentUser.uid] ?? {}),
+        ...senderProfile,
+        lastReadAt: now,
+      },
   };
 
   const participantIds = conversation.participantIds.filter(Boolean);
 
   for (const participantId of participantIds) {
     const otherParticipantId =
-      participantIds.find((value) => value !== participantId) ?? currentUser.uid;
+      participantIds.find((value) => value !== participantId) ??
+      currentUser.uid;
     const otherParticipant =
       conversation.participants[otherParticipantId] ??
       buildFallbackProfile(otherParticipantId, "Marketplace user");
@@ -510,9 +604,11 @@ export async function sendConversationMessage({
     rootUpdates[`${basePath}/lastMessageAt`] = now;
     rootUpdates[`${basePath}/lastMessageSenderId`] = currentUser.uid;
     rootUpdates[`${basePath}/otherParticipantId`] = otherParticipant.uid;
-    rootUpdates[`${basePath}/otherParticipantName`] = otherParticipant.displayName;
+    rootUpdates[`${basePath}/otherParticipantName`] =
+      otherParticipant.displayName;
     rootUpdates[`${basePath}/otherParticipantEmail`] = otherParticipant.email;
-    rootUpdates[`${basePath}/otherParticipantInitial`] = otherParticipant.avatarInitial;
+    rootUpdates[`${basePath}/otherParticipantInitial`] =
+      otherParticipant.avatarInitial;
 
     if (participantId === currentUser.uid) {
       rootUpdates[`${basePath}/unreadCount`] = 0;
@@ -524,3 +620,8 @@ export async function sendConversationMessage({
 
   await update(ref(realtimeDb), rootUpdates);
 }
+
+
+
+
+

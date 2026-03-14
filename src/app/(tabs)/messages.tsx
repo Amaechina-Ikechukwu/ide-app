@@ -1,7 +1,7 @@
 import { formatCurrency } from "@/lib/formatters";
 import {
-  isMessagingConfigured,
-  subscribeToUserConversations,
+    isMessagingConfigured,
+    subscribeToUserConversations,
 } from "@/lib/messaging";
 import { useStore } from "@/store/useStore";
 import type { ConversationListItem } from "@/types";
@@ -9,13 +9,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -42,7 +42,10 @@ function formatConversationTime(timestamp: number | null) {
 export default function MessagesScreen() {
   const router = useRouter();
   const user = useStore((state) => state.user);
-  const [conversations, setConversations] = useState<ConversationListItem[]>([]);
+  const messagingReady = isMessagingConfigured();
+  const [conversations, setConversations] = useState<ConversationListItem[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,8 +57,8 @@ export default function MessagesScreen() {
       return;
     }
 
-    if (!isMessagingConfigured()) {
-      setError("Add your Firebase Realtime Database URL to enable messaging.");
+    if (!messagingReady) {
+      setError("Chat is not enabled in this app build yet.");
       setLoading(false);
       return;
     }
@@ -76,23 +79,24 @@ export default function MessagesScreen() {
       );
       setLoading(false);
     }
-  }, [user]);
+  }, [messagingReady, user]);
 
   const renderConversation = ({ item }: { item: ConversationListItem }) => {
-    const preview = item.lastMessageText || "Start the conversation about this listing.";
+    const preview =
+      item.lastMessageText || "Start the conversation about this listing.";
     const formattedPrice =
       item.postPrice != null ? formatCurrency(item.postPrice) : null;
 
     return (
       <Pressable
         style={styles.threadCard}
-        onPress={() =>
-          router.push(`/messages/${item.conversationId}` as never)
-        }
+        onPress={() => router.push(`/messages/${item.conversationId}` as never)}
       >
         <View style={styles.threadTopRow}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{item.otherParticipantInitial}</Text>
+            <Text style={styles.avatarText}>
+              {item.otherParticipantInitial}
+            </Text>
           </View>
 
           <View style={styles.threadBody}>
@@ -120,7 +124,11 @@ export default function MessagesScreen() {
               ) : (
                 <View style={styles.listingThumbFallback}>
                   <Ionicons
-                    name={item.postType === "SALE" ? "pricetag-outline" : "search-outline"}
+                    name={
+                      item.postType === "SALE"
+                        ? "pricetag-outline"
+                        : "search-outline"
+                    }
                     size={14}
                     color="#2563EB"
                   />
@@ -133,7 +141,7 @@ export default function MessagesScreen() {
                 </Text>
                 <Text style={styles.listingMeta} numberOfLines={1}>
                   {item.postType === "SALE" ? "Selling" : "Looking for"}
-                  {formattedPrice ? `  •  ${formattedPrice}` : ""}
+                  {formattedPrice ? `  ï¿½  ${formattedPrice}` : ""}
                 </Text>
               </View>
             </View>
@@ -176,8 +184,15 @@ export default function MessagesScreen() {
           <View style={styles.infoIconWrap}>
             <Ionicons name="chatbubbles-outline" size={52} color="#9CA3AF" />
           </View>
-          <Text style={styles.title}>Messaging Not Ready</Text>
+          <Text style={styles.title}>Messaging Unavailable</Text>
           <Text style={styles.subtitle}>{error}</Text>
+          <Pressable
+            style={styles.secondaryBtn}
+            onPress={() => router.push("/(tabs)")}
+          >
+            <Text style={styles.secondaryBtnText}>Browse Listings</Text>
+            <Ionicons name="arrow-forward" size={16} color="#2563EB" />
+          </Pressable>
         </View>
       ) : loading ? (
         <View style={styles.center}>
@@ -413,5 +428,3 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
-
-

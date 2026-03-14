@@ -19,13 +19,15 @@ export function PostCard({ post, onPress }: PostCardProps) {
 }
 
 function SaleCard({ post, onPress }: PostCardProps) {
+  const imageUrls = Array.isArray(post.imageUrls) ? post.imageUrls : [];
+
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.saleInner}>
         <View style={styles.saleImageWrap}>
-          {post.imageUrls.length > 0 ? (
+          {imageUrls.length > 0 ? (
             <Image
-              source={{ uri: post.imageUrls[0] }}
+              source={{ uri: imageUrls[0] }}
               style={styles.saleImage}
               resizeMode="cover"
             />
@@ -66,6 +68,9 @@ function SaleCard({ post, onPress }: PostCardProps) {
 }
 
 function RequestCard({ post, onPress }: PostCardProps) {
+  const imageUrls = Array.isArray(post.imageUrls) ? post.imageUrls : [];
+  const tags = Array.isArray(post.tags) ? post.tags : [];
+
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.requestInner}>
@@ -80,8 +85,8 @@ function RequestCard({ post, onPress }: PostCardProps) {
             </Text>
           ) : null}
 
-          {post.tags.length > 0 ? (
-            <Text style={styles.requestTags}>{post.tags.join("/")}</Text>
+          {tags.length > 0 ? (
+            <Text style={styles.requestTags}>{tags.join("/")}</Text>
           ) : null}
 
           <Text style={styles.requestDescription} numberOfLines={2}>
@@ -101,9 +106,9 @@ function RequestCard({ post, onPress }: PostCardProps) {
           <View style={styles.buyingBadge}>
             <Text style={styles.buyingBadgeText}>BUYING</Text>
           </View>
-          {post.imageUrls.length > 0 ? (
+          {imageUrls.length > 0 ? (
             <Image
-              source={{ uri: post.imageUrls[0] }}
+              source={{ uri: imageUrls[0] }}
               style={styles.requestImage}
               resizeMode="cover"
             />
@@ -136,8 +141,9 @@ const styles = StyleSheet.create({
   },
   saleImageWrap: {
     width: 120,
-    minHeight: 150,
+    height: 156,
     position: "relative",
+    flexShrink: 0,
   },
   saleImage: {
     width: "100%",
@@ -169,6 +175,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
     justifyContent: "center",
+    minHeight: 156,
   },
   saleTitleRow: {
     flexDirection: "row",
@@ -187,6 +194,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#16A34A",
+    flexShrink: 0,
   },
   saleDescription: {
     fontSize: 13,

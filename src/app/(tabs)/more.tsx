@@ -1,6 +1,8 @@
+import { resolveAppHref } from "@/lib/appLinks";
 import { useStore } from "@/store/useStore";
 import type { LandingContent } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
 import {
     Dimensions,
@@ -26,6 +28,7 @@ const FALLBACK_CONTACT = {
 };
 
 export default function MoreScreen() {
+  const router = useRouter();
   const landings = useStore((s) => s.landings);
   const contact = useStore((s) => s.contact);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -46,6 +49,19 @@ export default function MoreScreen() {
     [],
   );
 
+  const handleAnnouncementLink = useCallback(
+    async (url: string) => {
+      const appHref = resolveAppHref(url);
+      if (appHref) {
+        router.push(appHref as never);
+        return;
+      }
+
+      await Linking.openURL(url);
+    },
+    [router],
+  );
+
   const renderAnnouncementCard = (item: LandingContent, index: number) => (
     <View key={index} style={[styles.announcementCard, { width: CARD_WIDTH }]}>
       <View style={styles.updateBadge}>
@@ -57,11 +73,11 @@ export default function MoreScreen() {
       {item.ctaUrl && (
         <Pressable
           style={styles.ctaBtn}
-          onPress={() => Linking.openURL(item.ctaUrl!)}
+          onPress={() => {
+            void handleAnnouncementLink(item.ctaUrl!);
+          }}
         >
-          <Text style={styles.ctaBtnText}>
-            {item.ctaText ?? "Learn more"}
-          </Text>
+          <Text style={styles.ctaBtnText}>{item.ctaText ?? "Learn more"}</Text>
           <Ionicons name="arrow-forward" size={16} color="#2563EB" />
         </Pressable>
       )}

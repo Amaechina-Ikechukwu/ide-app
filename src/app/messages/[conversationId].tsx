@@ -1,9 +1,10 @@
 import { formatCurrency } from "@/lib/formatters";
 import {
-  markConversationAsRead,
-  sendConversationMessage,
-  subscribeToConversationMessages,
-  subscribeToConversationSummary,
+    isMessagingConfigured,
+    markConversationAsRead,
+    sendConversationMessage,
+    subscribeToConversationMessages,
+    subscribeToConversationSummary,
 } from "@/lib/messaging";
 import { useStore } from "@/store/useStore";
 import type { ChatMessage, ConversationListItem } from "@/types";
@@ -11,18 +12,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 function formatMessageTime(timestamp: number) {
   return new Date(timestamp).toLocaleTimeString([], {
@@ -35,7 +36,9 @@ export default function ConversationScreen() {
   const router = useRouter();
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
   const user = useStore((state) => state.user);
+  const messagingReady = isMessagingConfigured();
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const insets = useSafeAreaInsets();
 
   const [summary, setSummary] = useState<ConversationListItem | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -47,6 +50,13 @@ export default function ConversationScreen() {
 
   useEffect(() => {
     if (!user || typeof conversationId !== "string") {
+      setLoadingSummary(false);
+      setLoadingMessages(false);
+      return;
+    }
+
+    if (!messagingReady) {
+      setError("Chat is not enabled in this app build yet.");
       setLoadingSummary(false);
       setLoadingMessages(false);
       return;
@@ -79,22 +89,24 @@ export default function ConversationScreen() {
       };
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Unable to load this conversation.",
+        err instanceof Error
+          ? err.message
+          : "Unable to load this conversation.",
       );
       setLoadingSummary(false);
       setLoadingMessages(false);
     }
-  }, [conversationId, user]);
+  }, [conversationId, messagingReady, user]);
 
   useEffect(() => {
-    if (!user || typeof conversationId !== "string") {
+    if (!user || typeof conversationId !== "string" || !messagingReady) {
       return;
     }
 
     void markConversationAsRead(user.uid, conversationId).catch(() => {
       // Ignore read-state sync issues for now.
     });
-  }, [conversationId, messages.length, user]);
+  }, [conversationId, messages.length, messagingReady, user]);
 
   useEffect(() => {
     if (!messages.length) {
@@ -157,6 +169,25 @@ export default function ConversationScreen() {
     );
   }
 
+  if (!messagingReady) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <View style={styles.center}>
+          <Text style={styles.emptyTitle}>Messaging unavailable</Text>
+          <Text style={styles.emptySubtitle}>
+            Chat is not enabled in this app build yet.
+          </Text>
+          <Pressable
+            style={styles.primaryButton}
+            onPress={() => router.replace("/(tabs)/messages")}
+          >
+            <Text style={styles.primaryButtonText}>Back to Messages</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const loading = loadingSummary || loadingMessages;
   const title = summary?.otherParticipantName ?? "Conversation";
   const formattedPrice =
@@ -165,9 +196,10 @@ export default function ConversationScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.keyboardContainer}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.select({ ios: "padding", android: "height" })}
+      keyboardVerticalOffset={0}
     >
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.header}>
           <Pressable style={styles.headerBackBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color="#1F2937" />
@@ -201,7 +233,8 @@ export default function ConversationScreen() {
           </View>
         ) : null}
 
-        {loading ? (
+        <View style={styles.content}>
+          {loading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#2563EB" />
           </View>
@@ -213,6 +246,8 @@ export default function ConversationScreen() {
         ) : (
           <FlatList
             ref={listRef}
+            style={styles.messageScroller}
+            keyboardShouldPersistTaps="handled"
             data={messages}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => {
@@ -227,11 +262,15 @@ export default function ConversationScreen() {
                   <View
                     style={[
                       styles.messageBubble,
-                      isMine ? styles.messageBubbleMine : styles.messageBubbleOther,
+                      isMine
+                        ? styles.messageBubbleMine
+                        : styles.messageBubbleOther,
                     ]}
                   >
                     {!isMine ? (
-                      <Text style={styles.messageSender}>{item.senderName}</Text>
+                      <Text style={styles.messageSender}>
+                        {item.senderName}
+                      </Text>
                     ) : null}
                     <Text
                       style={[
@@ -270,9 +309,12 @@ export default function ConversationScreen() {
               </View>
             }
           />
-        )}
+          )}
+        </View>
 
-        <View style={styles.composerWrap}>
+        <View
+          style={[styles.composerWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}
+        >
           <TextInput
             style={styles.composerInput}
             placeholder="Write a message..."
@@ -375,6 +417,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 13,
     color: "#6B7280",
+  },
+  content: {
+    flex: 1,
+  },
+  messageScroller: {
+    flex: 1,
   },
   messageList: {
     paddingHorizontal: 16,
@@ -500,3 +548,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+

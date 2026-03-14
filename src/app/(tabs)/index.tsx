@@ -11,7 +11,7 @@ import {
     RefreshControl,
     StyleSheet,
     Text,
-    View
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -138,7 +138,7 @@ export default function FeedScreen() {
       {/* Floating Action Button */}
       <Pressable
         style={styles.fab}
-        onPress={() => router.push("/create" as any)}
+        onPress={() => router.push("/(tabs)/create" as never)}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>

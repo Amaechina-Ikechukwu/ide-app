@@ -1,4 +1,4 @@
-import { AxiosError } from "axios";
+﻿import { AxiosError } from "axios";
 import { Alert } from "react-native";
 
 export function handleApiError(err: unknown) {
@@ -18,6 +18,9 @@ export function handleApiError(err: unknown) {
       break;
     case 403:
       Alert.alert("Not allowed", message);
+      break;
+    case 409:
+      Alert.alert("Editing locked", message);
       break;
     case 404:
       /* silently remove from list */

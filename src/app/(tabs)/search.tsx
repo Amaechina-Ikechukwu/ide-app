@@ -1,6 +1,7 @@
 import { PostCard } from "@/components/PostCard";
 import { api } from "@/lib/api";
 import { handleApiError } from "@/lib/handleApiError";
+import { normalizePosts } from "@/lib/posts";
 import type { Post } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -31,7 +32,7 @@ export default function SearchScreen() {
     setSearched(true);
     try {
       const { data } = await api.get("/api/posts");
-      const posts: Post[] = data.posts ?? data ?? [];
+      const posts = normalizePosts(data.posts ?? data);
       const lowerQ = trimmed.toLowerCase();
       const filtered = posts.filter(
         (p) =>
@@ -136,19 +137,17 @@ export default function SearchScreen() {
           <View style={styles.suggestions}>
             <Text style={styles.suggestionsLabel}>Popular Searches</Text>
             <View style={styles.chipRow}>
-              {["Electronics", "Fashion", "Services", "Vehicles"].map(
-                (tag) => (
-                  <Pressable
-                    key={tag}
-                    style={styles.chip}
-                    onPress={() => {
-                      setQuery(tag);
-                    }}
-                  >
-                    <Text style={styles.chipText}>{tag}</Text>
-                  </Pressable>
-                ),
-              )}
+              {["Electronics", "Fashion", "Services", "Vehicles"].map((tag) => (
+                <Pressable
+                  key={tag}
+                  style={styles.chip}
+                  onPress={() => {
+                    setQuery(tag);
+                  }}
+                >
+                  <Text style={styles.chipText}>{tag}</Text>
+                </Pressable>
+              ))}
             </View>
           </View>
         </View>

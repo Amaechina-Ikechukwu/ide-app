@@ -2,7 +2,12 @@ import { api } from "@/lib/api";
 import { auth, getIdToken, signOut } from "@/lib/auth";
 import { getDeviceId } from "@/lib/deviceId";
 import { handleApiError } from "@/lib/handleApiError";
-import { syncMessagingProfile } from "@/lib/messaging";
+import {
+  isMessagingConfigured,
+  subscribeToUserConversations,
+  syncMessagingProfile,
+} from "@/lib/messaging";
+import { normalizePosts } from "@/lib/posts";
 import type {
   Contact,
   LandingContent,
@@ -17,6 +22,9 @@ interface AppState {
   user: User | null;
   initAuth: () => () => void;
   logout: () => Promise<void>;
+
+  unreadConversationCount: number;
+  unreadMessageCount: number;
 
   deviceId: string | null;
   initDeviceId: () => Promise<void>;
@@ -46,23 +54,68 @@ interface AppState {
 export const useStore = create<AppState>((set, get) => ({
   user: auth.currentUser,
   initAuth: () => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      set({ user: u });
+    let unsubscribeConversations: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
+      unsubscribeConversations?.();
+      unsubscribeConversations = null;
+
+      set({
+        user: u,
+        unreadConversationCount: 0,
+        unreadMessageCount: 0,
+      });
+
       if (u) {
-        void syncMessagingProfile(u).catch(() => {
-          // Messaging can be configured separately from auth.
-        });
+        void (async () => {
+          try {
+            await u.getIdToken();
+            await syncMessagingProfile(u);
+          } catch {
+            // Messaging can be configured separately from auth.
+          }
+        })();
+
+        if (isMessagingConfigured()) {
+          unsubscribeConversations = subscribeToUserConversations(
+            u.uid,
+            (items) => {
+              const unreadConversationCount = items.filter(
+                (item) => item.unreadCount > 0,
+              ).length;
+              const unreadMessageCount = items.reduce(
+                (sum, item) => sum + Math.max(item.unreadCount, 0),
+                0,
+              );
+
+              set({ unreadConversationCount, unreadMessageCount });
+            },
+          );
+        }
+
         get().fetchBalance();
       } else {
         set({ balance: null });
       }
     });
-    return unsubscribe;
+
+    return () => {
+      unsubscribeConversations?.();
+      unsubscribeAuth();
+    };
   },
   logout: async () => {
     await signOut();
-    set({ user: null, balance: null });
+    set({
+      user: null,
+      balance: null,
+      unreadConversationCount: 0,
+      unreadMessageCount: 0,
+    });
   },
+
+  unreadConversationCount: 0,
+  unreadMessageCount: 0,
 
   deviceId: null,
   initDeviceId: async () => {
@@ -83,7 +136,7 @@ export const useStore = create<AppState>((set, get) => ({
       const filter = get().feedFilter;
       const params = filter !== "ALL" ? { type: filter } : undefined;
       const { data } = await api.get("/api/posts", { params });
-      set({ posts: data.posts ?? data ?? [] });
+      set({ posts: normalizePosts(data.posts ?? data) });
     } catch (err) {
       handleApiError(err);
     } finally {

@@ -1,6 +1,8 @@
+import { resolveAppHref } from "@/lib/appLinks";
 import { useStore } from "@/store/useStore";
 import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
     Dimensions,
@@ -16,11 +18,27 @@ import {
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 export function LandingModal() {
+  const router = useRouter();
   const landing = useStore((s) => s.landing);
   const landingSeen = useStore((s) => s.landingSeen);
   const dismissLanding = useStore((s) => s.dismissLanding);
 
   const visible = !!landing?.headline && !landingSeen;
+
+  const handleCtaPress = async () => {
+    if (!landing?.ctaUrl) {
+      return;
+    }
+
+    const appHref = resolveAppHref(landing.ctaUrl);
+    if (appHref) {
+      dismissLanding();
+      router.push(appHref as never);
+      return;
+    }
+
+    await Linking.openURL(landing.ctaUrl);
+  };
 
   return (
     <Modal
@@ -84,7 +102,9 @@ export function LandingModal() {
             {landing?.ctaUrl ? (
               <Pressable
                 style={styles.ctaLink}
-                onPress={() => Linking.openURL(landing.ctaUrl!)}
+                onPress={() => {
+                  void handleCtaPress();
+                }}
               >
                 <Text style={styles.ctaLinkText}>
                   {landing.ctaText ?? "Learn more"}
@@ -100,8 +120,7 @@ export function LandingModal() {
               <Pressable
                 style={styles.ctaBtn}
                 onPress={() => {
-                  Linking.openURL(landing.ctaUrl!);
-                  dismissLanding();
+                  void handleCtaPress();
                 }}
               >
                 <Text style={styles.ctaBtnText}>
