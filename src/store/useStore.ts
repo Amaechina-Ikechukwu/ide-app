@@ -1,5 +1,9 @@
 import { api } from "@/lib/api";
 import { auth, getIdToken, signOut } from "@/lib/auth";
+import {
+  LANDING_PROMO_DURATION_HOURS,
+  LANDING_PROMO_TOKEN_COST,
+} from "@/constants/marketplace";
 import { getDeviceId } from "@/lib/deviceId";
 import { handleApiError } from "@/lib/handleApiError";
 import {
@@ -11,12 +15,18 @@ import { normalizePosts } from "@/lib/posts";
 import type {
   Contact,
   LandingContent,
+  PaymentTransaction,
   Post,
   PostType,
   TokenBundle,
 } from "@/types";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { create } from "zustand";
+
+interface AuthenticatedRequestOptions {
+  token?: string | null;
+  silent?: boolean;
+}
 
 interface AppState {
   user: User | null;
@@ -36,10 +46,16 @@ interface AppState {
   fetchPosts: () => Promise<void>;
 
   balance: number | null;
-  fetchBalance: () => Promise<void>;
+  fetchBalance: (options?: AuthenticatedRequestOptions) => Promise<number | null>;
 
   bundles: TokenBundle[];
   fetchBundles: () => Promise<void>;
+
+  transactions: PaymentTransaction[];
+  transactionsLoading: boolean;
+  fetchTransactions: (
+    options?: AuthenticatedRequestOptions,
+  ) => Promise<PaymentTransaction[]>;
 
   landings: LandingContent[];
   landing: LandingContent | null;
@@ -68,8 +84,12 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (u) {
         void (async () => {
+          const token = await u.getIdToken().catch(() => null);
+
+          void get().fetchBalance({ token });
+          void get().fetchTransactions({ token });
+
           try {
-            await u.getIdToken();
             await syncMessagingProfile(u);
           } catch {
             // Messaging can be configured separately from auth.
@@ -93,9 +113,8 @@ export const useStore = create<AppState>((set, get) => ({
           );
         }
 
-        get().fetchBalance();
       } else {
-        set({ balance: null });
+        set({ balance: null, transactions: [] });
       }
     });
 
@@ -109,6 +128,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({
       user: null,
       balance: null,
+      transactions: [],
       unreadConversationCount: 0,
       unreadMessageCount: 0,
     });
@@ -145,16 +165,26 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   balance: null,
-  fetchBalance: async () => {
+  fetchBalance: async (options) => {
+    const token = options?.token ?? (await getIdToken());
+    if (!token) return null;
+
     try {
-      const token = await getIdToken();
-      if (!token) return;
       const { data } = await api.get("/api/tokens/balance", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      set({ balance: data.balance });
+      const balance =
+        typeof data.balance === "number" && Number.isFinite(data.balance)
+          ? data.balance
+          : null;
+
+      set({ balance });
+      return balance;
     } catch (err) {
-      handleApiError(err);
+      if (!options?.silent) {
+        handleApiError(err);
+      }
+      return get().balance;
     }
   },
 
@@ -165,6 +195,39 @@ export const useStore = create<AppState>((set, get) => ({
       set({ bundles: data.bundles ?? data ?? [] });
     } catch (err) {
       handleApiError(err);
+    }
+  },
+
+  transactions: [],
+  transactionsLoading: false,
+  fetchTransactions: async (options) => {
+    const token = options?.token ?? (await getIdToken());
+    if (!token) {
+      set({ transactions: [], transactionsLoading: false });
+      return [];
+    }
+
+    set({ transactionsLoading: true });
+
+    try {
+      const { data } = await api.get("/api/payments/transactions", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const transactions = Array.isArray(data?.transactions)
+        ? data.transactions
+        : Array.isArray(data)
+          ? data
+          : [];
+
+      set({ transactions });
+      return transactions;
+    } catch (err) {
+      if (!options?.silent) {
+        handleApiError(err);
+      }
+      return get().transactions;
+    } finally {
+      set({ transactionsLoading: false });
     }
   },
 
@@ -183,6 +246,19 @@ export const useStore = create<AppState>((set, get) => ({
         const single: LandingContent = data.content ?? data;
         items = [single];
       }
+      items = items.map((item) => ({
+        ...item,
+        tokenCost:
+          typeof item?.tokenCost === "number" &&
+          Number.isFinite(item.tokenCost)
+            ? item.tokenCost
+            : LANDING_PROMO_TOKEN_COST,
+        durationHours:
+          typeof item?.durationHours === "number" &&
+          Number.isFinite(item.durationHours)
+            ? item.durationHours
+            : LANDING_PROMO_DURATION_HOURS,
+      }));
       set({ landings: items, landing: items[0] ?? null });
     } catch {
       // Landing content is optional.

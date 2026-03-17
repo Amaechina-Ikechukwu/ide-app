@@ -25,12 +25,29 @@ export interface TokenBundle {
   currency: string;
 }
 
+export interface PaymentTransaction {
+  id: string;
+  userId: string;
+  bundle: TokenBundle["id"] | string;
+  units: number;
+  amountPaid: number;
+  currency: string;
+  paymentRef: string;
+  createdAt: number;
+  completedAt?: number | null;
+  status: string;
+  channel?: string | null;
+  paystackTransactionId?: number | null;
+}
+
 export interface LandingContent {
   headline: string;
   body: string;
   imageUrl?: string;
   ctaText?: string;
   ctaUrl?: string;
+  tokenCost: number;
+  durationHours: number;
   updatedAt: number;
 }
 

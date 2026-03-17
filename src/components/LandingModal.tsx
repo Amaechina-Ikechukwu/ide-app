@@ -1,4 +1,8 @@
 import { resolveAppHref } from "@/lib/appLinks";
+import {
+  LANDING_PROMO_DURATION_HOURS,
+  LANDING_PROMO_TOKEN_COST,
+} from "@/constants/marketplace";
 import { useStore } from "@/store/useStore";
 import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
@@ -90,6 +94,18 @@ export function LandingModal() {
             <View style={styles.sponsoredBadge}>
               <Ionicons name="star" size={11} color="#EAB308" />
               <Text style={styles.sponsoredText}>SPONSORED</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <View style={styles.metaPill}>
+                <Text style={styles.metaPillText}>
+                  {landing?.tokenCost ?? LANDING_PROMO_TOKEN_COST} tokens
+                </Text>
+              </View>
+              <View style={styles.metaPill}>
+                <Text style={styles.metaPillText}>
+                  {landing?.durationHours ?? LANDING_PROMO_DURATION_HOURS} hrs
+                </Text>
+              </View>
             </View>
 
             {/* Headline */}
@@ -244,6 +260,22 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#92400E",
     letterSpacing: 0.8,
+  },
+  metaRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+  },
+  metaPill: {
+    borderRadius: 999,
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  metaPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4B5563",
   },
   headline: {
     fontSize: 28,

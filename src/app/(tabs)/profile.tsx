@@ -1,3 +1,4 @@
+import { APP_NAME } from "@/constants/marketplace";
 import { useStore } from "@/store/useStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -132,6 +133,38 @@ export default function ProfileScreen() {
 
             <View style={styles.menuDivider} />
 
+            {user && (
+              <>
+                <Pressable
+                  style={styles.menuRow}
+                  onPress={() => router.push("/transactions")}
+                >
+                  <View
+                    style={[styles.menuIcon, { backgroundColor: "#EEF2FF" }]}
+                  >
+                    <Ionicons
+                      name="receipt-outline"
+                      size={20}
+                      color="#4F46E5"
+                    />
+                  </View>
+                  <View style={styles.menuInfo}>
+                    <Text style={styles.menuLabel}>Transaction History</Text>
+                    <Text style={styles.menuDesc}>
+                      View token purchases and references
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color="#D1D5DB"
+                  />
+                </Pressable>
+
+                <View style={styles.menuDivider} />
+              </>
+            )}
+
             <Pressable
               style={styles.menuRow}
               onPress={() => router.push("/(tabs)/more" as any)}
@@ -206,9 +239,7 @@ export default function ProfileScreen() {
 
         {/* About */}
         <View style={styles.aboutSection}>
-          <Text style={styles.aboutText}>
-            IDE – Idemili Marketplace
-          </Text>
+          <Text style={styles.aboutText}>{APP_NAME}</Text>
           <Text style={styles.versionText}>Version 1.0.0</Text>
         </View>
       </ScrollView>

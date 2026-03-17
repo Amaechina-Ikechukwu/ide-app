@@ -14,6 +14,7 @@ import { ExternalLink } from "../external-link/external-link";
 import { ThemedText } from "../themed-text/themed-text";
 import { ThemedView } from "../themed-view/themed-view";
 
+import { APP_NAME } from "@/constants/marketplace";
 import { Colors, MaxContentWidth, Spacing } from "@/constants/theme";
 
 export default function AppTabs() {
@@ -64,7 +65,7 @@ export function CustomTabList(props: TabListProps) {
     <View {...props} style={styles.tabListContainer}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
         <ThemedText type="smallBold" style={styles.brandText}>
-          Idemili Market
+          {APP_NAME}
         </ThemedText>
 
         {props.children}

@@ -58,12 +58,17 @@ export default function RootLayout() {
     void fetchLanding();
     const unsubscribe = initAuth();
     return unsubscribe;
-  }, []);
+  }, [fetchLanding, initAuth, initDeviceId]);
 
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          headerBackButtonDisplayMode: "minimal",
+        }}
+      >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="post/[id]"
@@ -97,6 +102,7 @@ export default function RootLayout() {
             headerTintColor: "#2563EB",
           }}
         />
+        <Stack.Screen name="transactions" />
       </Stack>
       <GlobalMessageIndicator />
       <LandingModal />

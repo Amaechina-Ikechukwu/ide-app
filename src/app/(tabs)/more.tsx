@@ -1,26 +1,31 @@
 import { resolveAppHref } from "@/lib/appLinks";
+import {
+  APP_NAME,
+  LANDING_PROMO_DURATION_HOURS,
+  LANDING_PROMO_TOKEN_COST,
+  LISTING_LIFETIME_HOURS,
+} from "@/constants/marketplace";
 import { useStore } from "@/store/useStore";
 import type { LandingContent } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
 import {
-    Dimensions,
-    Linking,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Dimensions,
+  Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const CARD_WIDTH = SCREEN_W - 32; // 16px padding each side
+const CARD_WIDTH = SCREEN_W - 32;
 
-// Fallback contact info
 const FALLBACK_CONTACT = {
   email: "marketbalogun@gmail.com",
   phone: "08133470844",
@@ -34,10 +39,7 @@ export default function MoreScreen() {
   const [activeSlide, setActiveSlide] = useState(0);
   const carouselRef = useRef<ScrollView>(null);
 
-  // Use API contact or fallback
   const displayContact = contact ?? FALLBACK_CONTACT;
-
-  // Filter announcements that have a headline
   const announcements = landings.filter((l) => !!l.headline);
 
   const onCarouselScroll = useCallback(
@@ -68,9 +70,21 @@ export default function MoreScreen() {
         <View style={styles.updateDot} />
         <Text style={styles.updateText}>ANNOUNCEMENT</Text>
       </View>
+      <View style={styles.metaRow}>
+        <View style={styles.metaPill}>
+          <Text style={styles.metaPillText}>
+            {item.tokenCost ?? LANDING_PROMO_TOKEN_COST} tokens
+          </Text>
+        </View>
+        <View style={styles.metaPill}>
+          <Text style={styles.metaPillText}>
+            {item.durationHours ?? LANDING_PROMO_DURATION_HOURS} hrs
+          </Text>
+        </View>
+      </View>
       <Text style={styles.announcementTitle}>{item.headline}</Text>
       <Text style={styles.announcementBody}>{item.body}</Text>
-      {item.ctaUrl && (
+      {item.ctaUrl ? (
         <Pressable
           style={styles.ctaBtn}
           onPress={() => {
@@ -80,7 +94,7 @@ export default function MoreScreen() {
           <Text style={styles.ctaBtnText}>{item.ctaText ?? "Learn more"}</Text>
           <Ionicons name="arrow-forward" size={16} color="#2563EB" />
         </Pressable>
-      )}
+      ) : null}
     </View>
   );
 
@@ -94,20 +108,18 @@ export default function MoreScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Announcements Carousel */}
         {announcements.length > 0 ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Announcements</Text>
-              {announcements.length > 1 && (
+              {announcements.length > 1 ? (
                 <Text style={styles.slideCounter}>
                   {activeSlide + 1} / {announcements.length}
                 </Text>
-              )}
+              ) : null}
             </View>
 
             {announcements.length === 1 ? (
-              // Single announcement — no carousel needed
               renderAnnouncementCard(announcements[0], 0)
             ) : (
               <>
@@ -126,15 +138,11 @@ export default function MoreScreen() {
                   {announcements.map(renderAnnouncementCard)}
                 </ScrollView>
 
-                {/* Page indicators */}
                 <View style={styles.dotsRow}>
                   {announcements.map((_, i) => (
                     <View
                       key={i}
-                      style={[
-                        styles.dot,
-                        i === activeSlide && styles.dotActive,
-                      ]}
+                      style={[styles.dot, i === activeSlide && styles.dotActive]}
                     />
                   ))}
                 </View>
@@ -143,7 +151,6 @@ export default function MoreScreen() {
           </View>
         ) : null}
 
-        {/* Contact Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact Us</Text>
 
@@ -208,14 +215,14 @@ export default function MoreScreen() {
           </View>
         </View>
 
-        {/* About */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
           <View style={styles.aboutCard}>
             <Text style={styles.aboutText}>
-              IDE – Idemili Marketplace is a community marketplace for Idemili,
-              Anambra State. Post sale listings or request items you need. Posts
-              auto-expire after 48 hours. No sign-up required to browse or post.
+              {APP_NAME} is a community marketplace for Idemili, Anambra State.
+              Post sale listings or request items you need. Posts auto-expire
+              after {LISTING_LIFETIME_HOURS} hours. No sign-up required to
+              browse or post.
             </Text>
             <Text style={styles.versionText}>Version 1.0.0</Text>
           </View>
@@ -284,6 +291,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#2563EB",
   },
   updateText: { fontSize: 11, fontWeight: "700", color: "#374151" },
+  metaRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 10,
+  },
+  metaPill: {
+    borderRadius: 999,
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  metaPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
   announcementTitle: {
     fontSize: 20,
     fontWeight: "700",

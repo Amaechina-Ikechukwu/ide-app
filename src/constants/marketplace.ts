@@ -1,0 +1,5 @@
+export const APP_NAME = "IDE";
+export const FREE_POST_COOLDOWN_HOURS = 48;
+export const LISTING_LIFETIME_HOURS = 48;
+export const LANDING_PROMO_TOKEN_COST = 13;
+export const LANDING_PROMO_DURATION_HOURS = 48;

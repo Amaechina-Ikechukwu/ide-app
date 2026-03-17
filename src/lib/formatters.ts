@@ -3,6 +3,25 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$",
 };
 
+export function stripNumericFormatting(value: string) {
+  return value.replace(/,/g, "").trim();
+}
+
+export function formatAmountInput(value: string) {
+  const sanitized = value.replace(/[^\d.]/g, "");
+  if (!sanitized) return "";
+
+  const [integerPart = "", ...decimalParts] = sanitized.split(".");
+  const hasDecimal = sanitized.includes(".");
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  if (!hasDecimal) {
+    return formattedInteger;
+  }
+
+  return `${formattedInteger || "0"}.${decimalParts.join("")}`;
+}
+
 export function formatCurrency(
   amount: number,
   currency = "NGN",

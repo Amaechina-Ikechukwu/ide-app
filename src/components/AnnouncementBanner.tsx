@@ -1,3 +1,7 @@
+import {
+  LANDING_PROMO_DURATION_HOURS,
+  LANDING_PROMO_TOKEN_COST,
+} from "@/constants/marketplace";
 import type { LandingContent } from "@/types";
 import React, { useCallback, useRef, useState } from "react";
 import {
@@ -53,6 +57,10 @@ export function AnnouncementBanner({ landings }: AnnouncementBannerProps) {
         <View style={styles.badge}>
           <Text style={styles.badgeText}>ANNOUNCEMENT</Text>
         </View>
+        <Text style={styles.metaText}>
+          {(item.tokenCost ?? LANDING_PROMO_TOKEN_COST).toString()} tokens |{" "}
+          {(item.durationHours ?? LANDING_PROMO_DURATION_HOURS).toString()} hrs
+        </Text>
         <Text style={styles.headline} numberOfLines={2}>
           {item.headline}
         </Text>
@@ -171,6 +179,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.8,
+  },
+  metaText: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 11,
+    fontWeight: "600",
+    marginBottom: 8,
   },
   headline: {
     fontSize: 22,

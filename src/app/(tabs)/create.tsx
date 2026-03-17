@@ -1,5 +1,7 @@
 import { api } from "@/lib/api";
 import { getIdToken } from "@/lib/auth";
+import { FREE_POST_COOLDOWN_HOURS } from "@/constants/marketplace";
+import { formatAmountInput, stripNumericFormatting } from "@/lib/formatters";
 import { handleApiError } from "@/lib/handleApiError";
 import { useStore } from "@/store/useStore";
 import type { PostType } from "@/types";
@@ -66,6 +68,19 @@ export default function CreatePostScreen() {
   const [category, setCategory] = useState("");
   const [images, setImages] = useState<SelectedImage[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const resetForm = () => {
+    setType("SALE");
+    setTitle("");
+    setDescription("");
+    setPrice("");
+    setCategory("");
+    setImages([]);
+  };
+
+  const handlePriceChange = (value: string) => {
+    setPrice(formatAmountInput(value));
+  };
 
   const pickImage = async () => {
     if (images.length >= 5) {
@@ -154,6 +169,7 @@ export default function CreatePostScreen() {
       }
 
       const token = await getIdToken();
+      const normalizedPrice = stripNumericFormatting(price);
 
       await api.post(
         "/api/posts",
@@ -163,8 +179,8 @@ export default function CreatePostScreen() {
           title: title.trim(),
           description: description.trim(),
           imageUrls,
-          price: price ? parseFloat(price) : undefined,
-          currency: price ? "NGN" : undefined,
+          price: normalizedPrice ? parseFloat(normalizedPrice) : undefined,
+          currency: normalizedPrice ? "NGN" : undefined,
           tags: category ? [category] : [],
         },
         token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
@@ -174,6 +190,7 @@ export default function CreatePostScreen() {
         {
           text: "OK",
           onPress: () => {
+            resetForm();
             fetchPosts();
             router.replace("/(tabs)");
           },
@@ -185,7 +202,7 @@ export default function CreatePostScreen() {
         const hours = (retryAfterMs / 3_600_000).toFixed(1);
         Alert.alert(
           "Slow down!",
-          `Free users can post once every 24h.\nTry again in ${hours}h.`,
+          `Free users can post once every ${FREE_POST_COOLDOWN_HOURS}h.\nTry again in ${hours}h.`,
         );
       } else if (err instanceof Error && /image|upload/i.test(err.message)) {
         Alert.alert(
@@ -279,7 +296,7 @@ export default function CreatePostScreen() {
                   type === "REQUEST" && styles.toggleTextActive,
                 ]}
               >
-                I'm looking for
+                I am looking for
               </Text>
             </Pressable>
           </View>
@@ -358,7 +375,7 @@ export default function CreatePostScreen() {
                 placeholder="0.00"
                 placeholderTextColor="#9CA3AF"
                 value={price}
-                onChangeText={setPrice}
+                onChangeText={handlePriceChange}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
               />

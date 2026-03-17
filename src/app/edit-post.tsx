@@ -1,6 +1,7 @@
 ﻿import { api } from "@/lib/api";
 import { getIdToken } from "@/lib/auth";
 import { getDeviceId } from "@/lib/deviceId";
+import { formatAmountInput, stripNumericFormatting } from "@/lib/formatters";
 import { handleApiError } from "@/lib/handleApiError";
 import {
   isMessagingConfigured,
@@ -84,6 +85,10 @@ export default function EditPostScreen() {
   const [post, setPost] = useState<EditablePost | null>(null);
   const [editingLocked, setEditingLocked] = useState(false);
 
+  const handlePriceChange = (value: string) => {
+    setPrice(formatAmountInput(value));
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -121,7 +126,11 @@ export default function EditPostScreen() {
         setType(nextPost.type);
         setTitle(nextPost.title);
         setDescription(nextPost.description);
-        setPrice(nextPost.price != null ? String(nextPost.price) : "");
+        setPrice(
+          nextPost.price != null
+            ? formatAmountInput(String(nextPost.price))
+            : "",
+        );
         setCategory(categoryTag);
         setExtraTags(nextPost.tags.filter((tag) => tag !== categoryTag));
         setImages(
@@ -253,7 +262,7 @@ export default function EditPostScreen() {
   const handleSave = async () => {
     const trimmedTitle = title.trim();
     const trimmedDescription = description.trim();
-    const normalizedPriceInput = price.trim();
+    const normalizedPriceInput = stripNumericFormatting(price);
     const priceValue = normalizedPriceInput ? Number(normalizedPriceInput) : null;
 
     if (!trimmedTitle) {
@@ -501,7 +510,7 @@ export default function EditPostScreen() {
               placeholder="0.00"
               placeholderTextColor="#9CA3AF"
               value={price}
-              onChangeText={setPrice}
+              onChangeText={handlePriceChange}
               keyboardType="decimal-pad"
               returnKeyType="done"
             />

@@ -1,4 +1,9 @@
 import { PaymentWebView } from "@/components/PaymentWebView";
+import {
+  TokenRewardModal,
+  type TokenRewardSummary,
+} from "@/components/TokenRewardModal";
+import { FREE_POST_COOLDOWN_HOURS } from "@/constants/marketplace";
 import { api } from "@/lib/api";
 import { auth, getIdToken } from "@/lib/auth";
 import { handleApiError } from "@/lib/handleApiError";
@@ -64,36 +69,51 @@ export default function TokenStoreScreen() {
   const balance = useStore((s) => s.balance);
   const fetchBundles = useStore((s) => s.fetchBundles);
   const fetchBalance = useStore((s) => s.fetchBalance);
+  const fetchTransactions = useStore((s) => s.fetchTransactions);
 
   const [paymentSession, setPaymentSession] =
     useState<PaystackCheckoutSession | null>(null);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [rewardSummary, setRewardSummary] =
+    useState<TokenRewardSummary | null>(null);
 
   useEffect(() => {
-    fetchBundles();
-    fetchBalance();
-  }, []);
+    void fetchBundles();
+    void fetchBalance();
+  }, [fetchBalance, fetchBundles]);
 
-  const refreshBalanceAfterPayment = async () => {
+  const refreshWalletAfterPayment = async (): Promise<TokenRewardSummary | null> => {
     const previousBalance = useStore.getState().balance;
 
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      await fetchBalance();
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await Promise.all([
+        fetchBalance({ silent: true }),
+        fetchTransactions({ silent: true }),
+      ]);
 
       const nextBalance = useStore.getState().balance;
       if (
-        previousBalance === null ||
-        nextBalance === null ||
-        nextBalance !== previousBalance ||
-        attempt === 3
+        previousBalance !== null &&
+        nextBalance !== null &&
+        nextBalance > previousBalance
       ) {
-        return;
+        return {
+          previousBalance,
+          nextBalance,
+          delta: nextBalance - previousBalance,
+        };
+      }
+
+      if (attempt === 5) {
+        return null;
       }
 
       await new Promise((resolve) => {
-        setTimeout(resolve, 1200 * (attempt + 1));
+        setTimeout(resolve, 900 + attempt * 350);
       });
     }
+
+    return null;
   };
 
   const handleBuy = async (bundle: TokenBundle) => {
@@ -106,6 +126,15 @@ export default function TokenStoreScreen() {
     setPurchasing(bundle.id);
     try {
       const token = await getIdToken();
+      if (!token) {
+        Alert.alert(
+          "Session expired",
+          "Please sign in again before starting your payment.",
+        );
+        router.push("/auth/login");
+        return;
+      }
+
       const { data } = await api.post(
         "/api/payments/initiate",
         { bundle: bundle.id, email: user.email },
@@ -131,7 +160,19 @@ export default function TokenStoreScreen() {
 
   const handlePaymentSuccess = () => {
     setPaymentSession(null);
-    void refreshBalanceAfterPayment();
+    void (async () => {
+      const reward = await refreshWalletAfterPayment();
+
+      if (reward) {
+        setRewardSummary(reward);
+        return;
+      }
+
+      Alert.alert(
+        "Payment received",
+        "Your balance is updating. Your new tokens should appear shortly.",
+      );
+    })();
   };
 
   return (
@@ -171,7 +212,7 @@ export default function TokenStoreScreen() {
             <View>
               <Text style={styles.benefitTitle}>Free Tier</Text>
               <Text style={styles.benefitDesc}>
-                Limited to 1 post every 24 hours.
+                Limited to 1 post every {FREE_POST_COOLDOWN_HOURS} hours.
               </Text>
             </View>
           </View>
@@ -303,6 +344,12 @@ export default function TokenStoreScreen() {
           />
         )}
       </Modal>
+
+      <TokenRewardModal
+        reward={rewardSummary}
+        visible={!!rewardSummary}
+        onClose={() => setRewardSummary(null)}
+      />
     </SafeAreaView>
   );
 }

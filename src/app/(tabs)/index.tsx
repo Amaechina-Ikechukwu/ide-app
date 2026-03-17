@@ -1,4 +1,5 @@
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
+import { APP_NAME } from "@/constants/marketplace";
 import { PostCard } from "@/components/PostCard";
 import { useStore } from "@/store/useStore";
 import type { Post, PostType } from "@/types";
@@ -15,7 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const FILTERS: Array<{ label: string; value: PostType | "ALL" }> = [
+const FILTERS: { label: string; value: PostType | "ALL" }[] = [
   { label: "All", value: "ALL" },
   { label: "Offers", value: "SALE" },
   { label: "Demands", value: "REQUEST" },
@@ -33,7 +34,7 @@ export default function FeedScreen() {
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [fetchPosts]);
 
   const handleRefresh = useCallback(() => {
     fetchPosts();
@@ -50,7 +51,7 @@ export default function FeedScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Idemili Market</Text>
+        <Text style={styles.headerTitle}>{APP_NAME}</Text>
         {user ? (
           <Pressable
             style={styles.avatarBtn}
