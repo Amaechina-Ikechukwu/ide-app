@@ -5,9 +5,10 @@ import { useStore } from "@/store/useStore";
 import type { Post, PostType } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     FlatList,
+    Modal,
     Pressable,
     RefreshControl,
     StyleSheet,
@@ -22,6 +23,30 @@ const FILTERS: { label: string; value: PostType | "ALL" }[] = [
   { label: "Demands", value: "REQUEST" },
 ];
 
+type SortOption = "newest" | "oldest" | "price_low" | "price_high";
+const SORT_OPTIONS: { label: string; value: SortOption }[] = [
+  { label: "Newest First", value: "newest" },
+  { label: "Oldest First", value: "oldest" },
+  { label: "Price: Low to High", value: "price_low" },
+  { label: "Price: High to Low", value: "price_high" },
+];
+
+function sortPosts(posts: Post[], sort: SortOption): Post[] {
+  const sorted = [...posts];
+  switch (sort) {
+    case "newest":
+      return sorted.sort((a, b) => b.createdAt - a.createdAt);
+    case "oldest":
+      return sorted.sort((a, b) => a.createdAt - b.createdAt);
+    case "price_low":
+      return sorted.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+    case "price_high":
+      return sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+    default:
+      return sorted;
+  }
+}
+
 export default function FeedScreen() {
   const router = useRouter();
   const posts = useStore((s) => s.posts);
@@ -29,16 +54,24 @@ export default function FeedScreen() {
   const feedLoading = useStore((s) => s.feedLoading);
   const setFeedFilter = useStore((s) => s.setFeedFilter);
   const fetchPosts = useStore((s) => s.fetchPosts);
-  const landings = useStore((s) => s.landings);
+  const bannerActive = useStore((s) => s.bannerActive);
+  const fetchBannerActive = useStore((s) => s.fetchBannerActive);
   const user = useStore((s) => s.user);
+
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [showFilterModal, setShowFilterModal] = useState(false);
+
+  const sortedPosts = React.useMemo(() => sortPosts(posts, sortBy), [posts, sortBy]);
 
   useEffect(() => {
     fetchPosts();
-  }, [fetchPosts]);
+    fetchBannerActive();
+  }, [fetchPosts, fetchBannerActive]);
 
   const handleRefresh = useCallback(() => {
     fetchPosts();
-  }, [fetchPosts]);
+    fetchBannerActive();
+  }, [fetchPosts, fetchBannerActive]);
 
   const renderPost = useCallback(
     ({ item }: { item: Post }) => (
@@ -72,7 +105,7 @@ export default function FeedScreen() {
       </View>
 
       <FlatList
-        data={posts}
+        data={sortedPosts}
         keyExtractor={(item) => item.id}
         renderItem={renderPost}
         contentContainerStyle={styles.list}
@@ -85,16 +118,24 @@ export default function FeedScreen() {
         }
         ListHeaderComponent={
           <>
-            {/* Announcement Banner */}
-            {landings.length > 0 ? (
-              <AnnouncementBanner landings={landings} />
+            {/* Banner Bid Carousel */}
+            {bannerActive?.active && bannerActive.slots.length > 0 ? (
+              <AnnouncementBanner
+                slots={bannerActive.slots}
+                roundId={bannerActive.roundId}
+              />
             ) : null}
 
             {/* Market Feed Header */}
             <View style={styles.feedHeader}>
               <Text style={styles.feedTitle}>Market Feed</Text>
-              <Pressable style={styles.filterLink}>
-                <Text style={styles.filterLinkText}>Filters</Text>
+              <Pressable
+                style={styles.filterLink}
+                onPress={() => setShowFilterModal(true)}
+              >
+                <Text style={styles.filterLinkText}>
+                  {sortBy === "newest" ? "Filters" : "Sorted"}
+                </Text>
                 <Ionicons name="options-outline" size={16} color="#2563EB" />
               </Pressable>
             </View>
@@ -143,6 +184,78 @@ export default function FeedScreen() {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
+
+      {/* Sort / Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setShowFilterModal(false)}
+        >
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Sort By</Text>
+            {SORT_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.value}
+                style={[
+                  styles.sortOption,
+                  sortBy === opt.value && styles.sortOptionActive,
+                ]}
+                onPress={() => {
+                  setSortBy(opt.value);
+                  setShowFilterModal(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.sortOptionText,
+                    sortBy === opt.value && styles.sortOptionTextActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+                {sortBy === opt.value ? (
+                  <Ionicons name="checkmark" size={18} color="#2563EB" />
+                ) : null}
+              </Pressable>
+            ))}
+
+            <Text style={[styles.modalTitle, { marginTop: 16 }]}>
+              Post Type
+            </Text>
+            {FILTERS.map((f) => (
+              <Pressable
+                key={f.value}
+                style={[
+                  styles.sortOption,
+                  feedFilter === f.value && styles.sortOptionActive,
+                ]}
+                onPress={() => {
+                  setFeedFilter(f.value);
+                  setShowFilterModal(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.sortOptionText,
+                    feedFilter === f.value && styles.sortOptionTextActive,
+                  ]}
+                >
+                  {f.label}
+                </Text>
+                {feedFilter === f.value ? (
+                  <Ionicons name="checkmark" size={18} color="#2563EB" />
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -273,5 +386,51 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#D1D5DB",
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 10,
+  },
+  sortOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  sortOptionActive: {
+    backgroundColor: "#EFF6FF",
+  },
+  sortOptionText: {
+    fontSize: 15,
+    color: "#374151",
+  },
+  sortOptionTextActive: {
+    color: "#2563EB",
+    fontWeight: "600",
   },
 });

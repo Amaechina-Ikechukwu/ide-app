@@ -51,14 +51,16 @@ function GlobalMessageIndicator() {
 export default function RootLayout() {
   const initDeviceId = useStore((state) => state.initDeviceId);
   const fetchLanding = useStore((state) => state.fetchLanding);
+  const fetchBannerActive = useStore((state) => state.fetchBannerActive);
   const initAuth = useStore((state) => state.initAuth);
 
   useEffect(() => {
     void initDeviceId();
     void fetchLanding();
+    void fetchBannerActive();
     const unsubscribe = initAuth();
     return unsubscribe;
-  }, [fetchLanding, initAuth, initDeviceId]);
+  }, [fetchLanding, fetchBannerActive, initAuth, initDeviceId]);
 
   return (
     <>
@@ -103,6 +105,12 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen name="transactions" />
+        <Stack.Screen
+          name="banner-bid"
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack>
       <GlobalMessageIndicator />
       <LandingModal />

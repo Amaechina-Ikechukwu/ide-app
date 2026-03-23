@@ -57,6 +57,89 @@ export interface Contact {
   whatsapp: string;
 }
 
+/* ── Banner Bid Carousel ── */
+
+export type BannerBidStatus = "active" | "outbid" | "won" | "refunded";
+
+export interface BannerSlot {
+  slotIndex: number;
+  headline: string;
+  body: string;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  linkText: string | null;
+  displayName: string;
+  amount: number;
+}
+
+export interface BannerActiveResponse {
+  active: boolean;
+  roundId: string;
+  startsAt: number;
+  endsAt: number;
+  slots: BannerSlot[];
+}
+
+export interface BannerRoundTopBid {
+  slotIndex: number;
+  displayName: string;
+  amount: number;
+  headline: string;
+  createdAt: number;
+}
+
+export interface BannerRound {
+  roundId: string;
+  startsAt: number;
+  endsAt: number;
+  status: string;
+  slotCount: number;
+  remainingMs: number;
+  filledSlots: number;
+  minimumBid: number;
+  topBids: BannerRoundTopBid[];
+}
+
+export interface BannerBid {
+  id: string;
+  roundId: string;
+  amount: number;
+  headline: string;
+  body?: string;
+  imageUrl?: string | null;
+  linkUrl?: string | null;
+  linkText?: string | null;
+  slotIndex: number;
+  status: BannerBidStatus;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface PlaceBidRequest {
+  headline: string;
+  body: string;
+  imageUrl?: string;
+  linkUrl?: string;
+  linkText?: string;
+  amount: number;
+}
+
+export interface PlaceBidResponse {
+  bid: BannerBid;
+  newBalance: number;
+}
+
+export interface IncreaseBidResponse {
+  bid: Pick<BannerBid, "id" | "amount" | "status">;
+  newBalance: number;
+}
+
+export interface MyBidsResponse {
+  roundId: string;
+  endsAt: number;
+  bids: BannerBid[];
+}
+
 export interface MessagingProfile {
   uid: string;
   displayName: string;

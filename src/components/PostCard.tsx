@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   requestRight: {
     alignItems: "flex-end",
     justifyContent: "space-between",
-    minWidth: 80,
+    minWidth: 110,
   },
   buyingBadge: {
     backgroundColor: "#2563EB",
@@ -272,8 +272,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   requestIconWrap: {
-    width: 60,
-    height: 60,
+    width: 100,
+    height: 100,
     borderRadius: 12,
     backgroundColor: "#EFF6FF",
     alignItems: "center",
@@ -281,8 +281,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   requestImage: {
-    width: 80,
-    height: 80,
+    width: 110,
+    height: 110,
     borderRadius: 12,
     marginTop: 8,
   },

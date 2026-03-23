@@ -13,9 +13,13 @@ import {
 } from "@/lib/messaging";
 import { normalizePosts } from "@/lib/posts";
 import type {
+  BannerActiveResponse,
+  BannerBid,
+  BannerRound,
   Contact,
   LandingContent,
   PaymentTransaction,
+  PlaceBidRequest,
   Post,
   PostType,
   TokenBundle,
@@ -65,6 +69,20 @@ interface AppState {
 
   contact: Contact | null;
   fetchContact: () => Promise<void>;
+
+  // Banner bid carousel
+  bannerActive: BannerActiveResponse | null;
+  bannerRound: BannerRound | null;
+  bannerMyBids: BannerBid[];
+  bannerLoading: boolean;
+  fetchBannerActive: () => Promise<void>;
+  fetchBannerRound: () => Promise<void>;
+  fetchMyBids: (options?: AuthenticatedRequestOptions) => Promise<void>;
+  placeBid: (payload: PlaceBidRequest) => Promise<BannerBid | null>;
+  increaseBid: (
+    bidId: string,
+    additionalAmount: number,
+  ) => Promise<BannerBid | null>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -273,6 +291,86 @@ export const useStore = create<AppState>((set, get) => ({
       set({ contact: data.contact ?? data });
     } catch (err) {
       handleApiError(err);
+    }
+  },
+
+  // Banner bid carousel
+  bannerActive: null,
+  bannerRound: null,
+  bannerMyBids: [],
+  bannerLoading: false,
+
+  fetchBannerActive: async () => {
+    try {
+      const { data } = await api.get("/api/banner/active");
+      set({ bannerActive: data });
+    } catch {
+      // Banner is optional — silently ignore.
+    }
+  },
+
+  fetchBannerRound: async () => {
+    try {
+      const { data } = await api.get("/api/banner/round");
+      set({ bannerRound: data });
+    } catch {
+      // Round info is optional.
+    }
+  },
+
+  fetchMyBids: async (options) => {
+    const token = options?.token ?? (await getIdToken());
+    if (!token) return;
+    try {
+      const { data } = await api.get("/api/banner/my-bids", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      set({ bannerMyBids: data.bids ?? [] });
+    } catch {
+      // Silently fail.
+    }
+  },
+
+  placeBid: async (payload) => {
+    const token = await getIdToken();
+    if (!token) return null;
+    set({ bannerLoading: true });
+    try {
+      const { data } = await api.post("/api/banner/bid", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      set({ balance: data.newBalance });
+      // Refresh bids and round
+      void get().fetchMyBids({ token });
+      void get().fetchBannerRound();
+      return data.bid;
+    } catch (err) {
+      handleApiError(err);
+      return null;
+    } finally {
+      set({ bannerLoading: false });
+    }
+  },
+
+  increaseBid: async (bidId, additionalAmount) => {
+    const token = await getIdToken();
+    if (!token) return null;
+    set({ bannerLoading: true });
+    try {
+      const { data } = await api.patch(
+        `/api/banner/bid/${bidId}/increase`,
+        { additionalAmount },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      set({ balance: data.newBalance });
+      void get().fetchMyBids({ token });
+      void get().fetchBannerRound();
+      return data.bid;
+    } catch (err) {
+      handleApiError(err);
+      return null;
+    } finally {
+      set({ bannerLoading: false });
     }
   },
 }));
