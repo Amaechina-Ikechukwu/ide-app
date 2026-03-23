@@ -1,3 +1,15 @@
+/**
+ * Ensures a Firebase Storage download URL has properly encoded slashes (%2F)
+ * in the object path. The REST API requires encoded slashes after /o/.
+ */
+export function encodeFirebaseStorageUrl(url: string): string {
+  return url.replace(
+    /(firebasestorage\.googleapis\.com\/v0\/b\/[^/]+\/o\/)([^?#]+)/,
+    (_, prefix, objectPath) =>
+      prefix + objectPath.split("/").map(encodeURIComponent).join("%2F"),
+  );
+}
+
 const CURRENCY_SYMBOLS: Record<string, string> = {
   NGN: "\u20A6",
   USD: "$",

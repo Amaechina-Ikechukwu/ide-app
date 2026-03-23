@@ -303,9 +303,10 @@ export const useStore = create<AppState>((set, get) => ({
   fetchBannerActive: async () => {
     try {
       const { data } = await api.get("/api/banner/active");
+      console.log("[BannerActive]", JSON.stringify(data, null, 2));
       set({ bannerActive: data });
-    } catch {
-      // Banner is optional — silently ignore.
+    } catch (err) {
+      console.log("[BannerActive] error:", err);
     }
   },
 

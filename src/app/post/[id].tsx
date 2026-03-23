@@ -2,7 +2,7 @@
 import { api } from "@/lib/api";
 import { getIdToken } from "@/lib/auth";
 import { getDeviceId } from "@/lib/deviceId";
-import { formatCurrency } from "@/lib/formatters";
+import { encodeFirebaseStorageUrl, formatCurrency } from "@/lib/formatters";
 import { handleApiError } from "@/lib/handleApiError";
 import {
     createOrOpenConversation,
@@ -304,6 +304,26 @@ export default function PostDetailScreen() {
             </View>
           ) : null}
 
+          {canDelete ? (
+            <Pressable
+              style={styles.promoteBtn}
+              onPress={() =>
+                router.push({
+                  pathname: "/banner-bid",
+                  params: {
+                    postId: post.id,
+                    headline: post.title,
+                    body: post.description,
+                    imageUrl: post.imageUrls[0] ? encodeFirebaseStorageUrl(post.imageUrls[0]) : "",
+                  },
+                } as never)
+              }
+            >
+              <Ionicons name="megaphone-outline" size={20} color="#7C3AED" />
+              <Text style={styles.promoteBtnText}>Promote</Text>
+            </Pressable>
+          ) : null}
+
           {canEdit ? (
             <Pressable style={styles.editBtn} onPress={handleEdit}>
               <Ionicons name="create-outline" size={20} color="#2563EB" />
@@ -538,6 +558,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   contactBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  promoteBtn: {
+    flex: 1,
+    minHeight: 50,
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#DDD6FE",
+    backgroundColor: "#F5F3FF",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  promoteBtnText: { color: "#7C3AED", fontSize: 15, fontWeight: "700" },
   editBtn: {
     flex: 1,
     minHeight: 50,

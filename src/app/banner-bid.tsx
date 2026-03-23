@@ -1,7 +1,7 @@
 import { useStore } from "@/store/useStore";
 import type { BannerBid, PlaceBidRequest } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -30,6 +30,8 @@ function isValidUrl(url: string): boolean {
 
 export default function BannerBidScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ postId?: string; headline?: string; body?: string; imageUrl?: string }>();
+  const isPromote = Boolean(params.postId);
 
   const user = useStore((s) => s.user);
   const balance = useStore((s) => s.balance);
@@ -43,9 +45,9 @@ export default function BannerBidScreen() {
   const increaseBid = useStore((s) => s.increaseBid);
 
   // Form state
-  const [headline, setHeadline] = useState("");
-  const [body, setBody] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [headline, setHeadline] = useState(params.headline ?? "");
+  const [body, setBody] = useState(params.body ?? "");
+  const [imageUrl, setImageUrl] = useState(params.imageUrl ?? "");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
   const [amount, setAmount] = useState("");
@@ -120,6 +122,7 @@ export default function BannerBidScreen() {
       return;
     }
     const payload: PlaceBidRequest = {
+      postId: params.postId ?? "",
       headline: headline.trim(),
       body: body.trim(),
       amount: parseInt(amount, 10),
@@ -329,37 +332,52 @@ export default function BannerBidScreen() {
               />
               <Text style={styles.charCount}>{body.length}/300</Text>
 
-              <Text style={styles.inputLabel}>Image URL (optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://..."
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="none"
-                keyboardType="url"
-                value={imageUrl}
-                onChangeText={setImageUrl}
-              />
+              {isPromote ? (
+                imageUrl ? (
+                  <>
+                    <Text style={styles.inputLabel}>Image URL</Text>
+                    <TextInput
+                      style={[styles.input, styles.inputReadOnly]}
+                      value={imageUrl}
+                      editable={false}
+                    />
+                  </>
+                ) : null
+              ) : (
+                <>
+                  <Text style={styles.inputLabel}>Image URL (optional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="https://..."
+                    placeholderTextColor="#9CA3AF"
+                    autoCapitalize="none"
+                    keyboardType="url"
+                    value={imageUrl}
+                    onChangeText={setImageUrl}
+                  />
 
-              <Text style={styles.inputLabel}>Link URL (optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://..."
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="none"
-                keyboardType="url"
-                value={linkUrl}
-                onChangeText={setLinkUrl}
-              />
+                  <Text style={styles.inputLabel}>Link URL (optional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="https://..."
+                    placeholderTextColor="#9CA3AF"
+                    autoCapitalize="none"
+                    keyboardType="url"
+                    value={linkUrl}
+                    onChangeText={setLinkUrl}
+                  />
 
-              <Text style={styles.inputLabel}>Link Text (optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="E.g. Shop Now"
-                placeholderTextColor="#9CA3AF"
-                maxLength={40}
-                value={linkText}
-                onChangeText={setLinkText}
-              />
+                  <Text style={styles.inputLabel}>Link Text (optional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="E.g. Shop Now"
+                    placeholderTextColor="#9CA3AF"
+                    maxLength={40}
+                    value={linkText}
+                    onChangeText={setLinkText}
+                  />
+                </>
+              )}
 
               <Text style={styles.inputLabel}>
                 Bid Amount (tokens) <Text style={styles.required}>*</Text>
@@ -582,6 +600,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     color: "#1F2937",
+  },
+  inputReadOnly: {
+    color: "#6B7280",
+    backgroundColor: "#F3F4F6",
   },
   textArea: {
     minHeight: 80,

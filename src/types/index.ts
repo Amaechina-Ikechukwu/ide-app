@@ -63,6 +63,7 @@ export type BannerBidStatus = "active" | "outbid" | "won" | "refunded";
 
 export interface BannerSlot {
   slotIndex: number;
+  postId: string;
   headline: string;
   body: string;
   imageUrl: string | null;
@@ -82,6 +83,7 @@ export interface BannerActiveResponse {
 
 export interface BannerRoundTopBid {
   slotIndex: number;
+  postId: string;
   displayName: string;
   amount: number;
   headline: string;
@@ -103,6 +105,7 @@ export interface BannerRound {
 export interface BannerBid {
   id: string;
   roundId: string;
+  postId: string;
   amount: number;
   headline: string;
   body?: string;
@@ -116,6 +119,7 @@ export interface BannerBid {
 }
 
 export interface PlaceBidRequest {
+  postId: string;
   headline: string;
   body: string;
   imageUrl?: string;

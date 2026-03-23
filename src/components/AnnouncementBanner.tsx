@@ -16,7 +16,9 @@ import {
 } from "react-native";
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const BANNER_WIDTH = SCREEN_W - 32; // 16px margin each side
+const CARD_GAP = 12;
+const PEEK = 28; // px of next card visible
+const CARD_WIDTH = SCREEN_W - 32 - CARD_GAP - PEEK; // wrapper is SCREEN_W-32
 const AUTO_SCROLL_INTERVAL = 5000;
 
 interface BannerCarouselProps {
@@ -36,7 +38,7 @@ export function AnnouncementBanner({ slots, roundId }: BannerCarouselProps) {
       setActiveSlide((prev) => {
         const next = (prev + 1) % slots.length;
         scrollRef.current?.scrollTo({
-          x: next * BANNER_WIDTH,
+          x: next * (CARD_WIDTH + CARD_GAP),
           animated: true,
         });
         return next;
@@ -66,7 +68,7 @@ export function AnnouncementBanner({ slots, roundId }: BannerCarouselProps) {
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const index = Math.round(e.nativeEvent.contentOffset.x / BANNER_WIDTH);
+      const index = Math.round(e.nativeEvent.contentOffset.x / (CARD_WIDTH + CARD_GAP));
       setActiveSlide(index);
     },
     [],
@@ -75,7 +77,9 @@ export function AnnouncementBanner({ slots, roundId }: BannerCarouselProps) {
   if (slots.length === 0) return null;
 
   const handleSlotPress = (slot: BannerSlot) => {
-    if (slot.linkUrl) {
+    if (slot.postId) {
+      router.push(`/post/${slot.postId}` as never);
+    } else if (slot.linkUrl) {
       Linking.openURL(slot.linkUrl).catch(() => {});
     }
   };
@@ -83,22 +87,20 @@ export function AnnouncementBanner({ slots, roundId }: BannerCarouselProps) {
   const renderSlide = (slot: BannerSlot, index: number) => (
     <Pressable
       key={index}
-      style={[styles.container, { width: BANNER_WIDTH }]}
+      style={[styles.container, { width: CARD_WIDTH }]}
       onPress={() => handleSlotPress(slot)}
     >
+      <View style={styles.bgGradient} />
       {slot.imageUrl ? (
         <Image
           source={{ uri: slot.imageUrl }}
           style={styles.bgImage}
           resizeMode="cover"
+          onLoad={() => console.log("[BannerImage] loaded:", slot.imageUrl)}
+          onError={(e) => console.log("[BannerImage] error:", e.nativeEvent.error)}
         />
-      ) : (
-        <View style={styles.bgGradient}>
-          <View style={styles.blobTopRight} />
-          <View style={styles.blobBottomLeft} />
-          <View style={styles.blobCenter} />
-        </View>
-      )}
+      ) : null}
+      {slot.imageUrl ? <View style={styles.scrim} /> : null}
       <View style={styles.overlay}>
         <View style={styles.topRow}>
           <View style={styles.badge}>
@@ -142,10 +144,10 @@ export function AnnouncementBanner({ slots, roundId }: BannerCarouselProps) {
         <ScrollView
           ref={scrollRef}
           horizontal
-          pagingEnabled
+          pagingEnabled={false}
           showsHorizontalScrollIndicator={false}
           decelerationRate="fast"
-          snapToInterval={BANNER_WIDTH}
+          snapToInterval={CARD_WIDTH + CARD_GAP}
           snapToAlignment="start"
           contentContainerStyle={styles.carouselContent}
           onScroll={onScroll}
@@ -194,43 +196,27 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   bgImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: "100%",
-    height: "100%",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: CARD_WIDTH,
+    height: 200,
   },
   bgGradient: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: CARD_WIDTH,
+    height: 200,
     backgroundColor: "#1E293B",
   },
-  blobTopRight: {
+  scrim: {
     position: "absolute",
-    top: -30,
-    right: -20,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: "#3B82F6",
-    opacity: 0.25,
-  },
-  blobBottomLeft: {
-    position: "absolute",
-    bottom: -40,
-    left: -30,
-    width: 200,
+    top: 0,
+    left: 0,
+    width: CARD_WIDTH,
     height: 200,
-    borderRadius: 100,
-    backgroundColor: "#8B5CF6",
-    opacity: 0.2,
-  },
-  blobCenter: {
-    position: "absolute",
-    top: 20,
-    left: 80,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "#06B6D4",
-    opacity: 0.15,
+    backgroundColor: "rgba(0,0,0,0.25)",
   },
   overlay: {
     flex: 1,

@@ -15,24 +15,17 @@ import {
 export function LandingModal() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const landing = useStore((state) => state.landing);
-  const landingActive = useStore((state) => state.landingActive);
-  const landingStatus = useStore((state) => state.landingStatus);
   const landingSeen = useStore((state) => state.landingSeen);
   const dismissLanding = useStore((state) => state.dismissLanding);
 
-  const visible =
-    Boolean(landing?.headline) &&
-    landingActive &&
-    landingStatus === "live" &&
-    !landingSeen;
+  const visible = Boolean(landing?.headline) && !landingSeen;
   const isCompact = screenWidth < 390;
   const cardWidth = Math.min(screenWidth - 18, 420);
-  const cardHeight = Math.min(screenHeight * 0.86, 760);
+  const cardHeight = screenHeight * 0.8;
+  const imageHeight = Math.round(cardHeight * 0.58);
   const horizontalPadding = isCompact ? 22 : 28;
-  const topPadding = isCompact ? 24 : 30;
-  const contentTopInset = Math.max(cardHeight * 0.31, isCompact ? 190 : 220);
-  const headlineSize = isCompact ? 46 : 54;
-  const headlineLineHeight = isCompact ? 48 : 56;
+  const headlineSize = isCompact ? 28 : 32;
+  const headlineLineHeight = isCompact ? 34 : 40;
 
   return (
     <Modal
@@ -49,44 +42,44 @@ export function LandingModal() {
             {
               width: cardWidth,
               height: cardHeight,
-              borderRadius: isCompact ? 30 : 36,
+              borderRadius: isCompact ? 24 : 28,
             },
           ]}
         >
-          <View style={styles.backdropBase} />
-          {landing?.imageUrl ? (
-            <Image
-              source={{ uri: landing.imageUrl }}
-              style={styles.backdropImage}
-              resizeMode="cover"
-            />
-          ) : null}
-          <View style={styles.backdropTint} />
-          <View style={styles.topShade} />
-          <View style={styles.bottomShade} />
-          <View style={[styles.glowOrb, styles.glowLeft]} />
-          <View style={[styles.glowOrb, styles.glowRight]} />
-          <View pointerEvents="none" style={styles.innerBorder} />
+          {/* Image section */}
+          <View style={[styles.imageSection, { height: imageHeight }]}>
+            {landing?.imageUrl ? (
+              <Image
+                source={{ uri: landing.imageUrl }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <View style={[styles.glowOrb, styles.glowLeft]} />
+                <View style={[styles.glowOrb, styles.glowRight]} />
+              </View>
+            )}
+          </View>
 
+          {/* Close button */}
           <Pressable
-            style={[
-              styles.closeButton,
-              { top: topPadding, right: horizontalPadding },
-            ]}
+            style={styles.closeButton}
             onPress={dismissLanding}
             hitSlop={12}
           >
-            <Ionicons name="close" size={22} color="#5B6B83" />
+            <Ionicons name="close" size={20} color="#5B6B83" />
           </Pressable>
 
+          {/* Content */}
           <ScrollView
             style={styles.contentScroll}
             contentContainerStyle={[
               styles.content,
               {
                 paddingHorizontal: horizontalPadding,
-                paddingTop: contentTopInset,
-                paddingBottom: isCompact ? 24 : 30,
+                paddingTop: 24,
+                paddingBottom: isCompact ? 28 : 32,
               },
             ]}
             showsVerticalScrollIndicator={false}
@@ -113,6 +106,8 @@ export function LandingModal() {
               </Text>
             ) : null}
           </ScrollView>
+
+          <View pointerEvents="none" style={styles.innerBorder} />
         </View>
       </View>
     </Modal>
@@ -128,7 +123,7 @@ const styles = StyleSheet.create({
     padding: 9,
   },
   card: {
-    backgroundColor: "#050B16",
+    backgroundColor: "#08111E",
     overflow: "hidden",
     shadowColor: "#020617",
     shadowOffset: { width: 0, height: 20 },
@@ -136,35 +131,19 @@ const styles = StyleSheet.create({
     shadowRadius: 32,
     elevation: 20,
   },
-  backdropBase: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#08111E",
+  imageSection: {
+    width: "100%",
+    backgroundColor: "#0F1C2E",
+    overflow: "hidden",
   },
-  backdropImage: {
-    ...StyleSheet.absoluteFillObject,
+  image: {
     width: "100%",
     height: "100%",
-    opacity: 0.72,
   },
-  backdropTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(4, 10, 24, 0.24)",
-  },
-  topShade: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 260,
-    backgroundColor: "rgba(8, 15, 30, 0.08)",
-  },
-  bottomShade: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 330,
-    backgroundColor: "rgba(2, 6, 23, 0.58)",
+  imagePlaceholder: {
+    flex: 1,
+    backgroundColor: "#0F1C2E",
+    overflow: "hidden",
   },
   glowOrb: {
     position: "absolute",
@@ -174,34 +153,30 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 211, 152, 0.12)",
   },
   glowLeft: {
-    top: 62,
-    left: -28,
+    top: -40,
+    left: -40,
   },
   glowRight: {
-    top: 70,
-    right: -10,
-  },
-  innerBorder: {
-    ...StyleSheet.absoluteFillObject,
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.08)",
+    bottom: -40,
+    right: -20,
   },
   closeButton: {
     position: "absolute",
-    zIndex: 2,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    zIndex: 10,
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "rgba(241, 245, 249, 0.92)",
     alignItems: "center",
     justifyContent: "center",
   },
   contentScroll: {
-    flex: 1,
+    flexShrink: 1,
   },
   content: {
     flexGrow: 1,
-    justifyContent: "flex-end",
   },
   badge: {
     alignSelf: "flex-start",
@@ -209,31 +184,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(78, 131, 255, 0.78)",
     backgroundColor: "rgba(23, 60, 163, 0.25)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: 24,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginBottom: 16,
   },
   badgeText: {
     color: "#E2E8F0",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     letterSpacing: 2,
   },
   headline: {
     color: "#F8FAFC",
     fontWeight: "800",
-    letterSpacing: -1.8,
-    marginBottom: 18,
+    letterSpacing: -0.8,
+    marginBottom: 12,
   },
   body: {
-    fontSize: 17,
-    lineHeight: 30,
+    fontSize: 15,
+    lineHeight: 24,
     color: "rgba(226, 232, 240, 0.82)",
-    marginBottom: 8,
   },
   bodyCompact: {
-    fontSize: 16,
-    lineHeight: 28,
-    marginBottom: 6,
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  innerBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.08)",
+    borderRadius: 28,
+    pointerEvents: "none",
   },
 });
