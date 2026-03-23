@@ -1,155 +1,118 @@
-import { resolveAppHref } from "@/lib/appLinks";
-import {
-  LANDING_PROMO_DURATION_HOURS,
-  LANDING_PROMO_TOKEN_COST,
-} from "@/constants/marketplace";
 import { useStore } from "@/store/useStore";
 import { Ionicons } from "@expo/vector-icons";
-import * as Linking from "expo-linking";
-import { useRouter } from "expo-router";
 import React from "react";
 import {
-    Dimensions,
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
 } from "react-native";
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
-
 export function LandingModal() {
-  const router = useRouter();
-  const landing = useStore((s) => s.landing);
-  const landingSeen = useStore((s) => s.landingSeen);
-  const dismissLanding = useStore((s) => s.dismissLanding);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const landing = useStore((state) => state.landing);
+  const landingActive = useStore((state) => state.landingActive);
+  const landingStatus = useStore((state) => state.landingStatus);
+  const landingSeen = useStore((state) => state.landingSeen);
+  const dismissLanding = useStore((state) => state.dismissLanding);
 
-  const visible = !!landing?.headline && !landingSeen;
-
-  const handleCtaPress = async () => {
-    if (!landing?.ctaUrl) {
-      return;
-    }
-
-    const appHref = resolveAppHref(landing.ctaUrl);
-    if (appHref) {
-      dismissLanding();
-      router.push(appHref as never);
-      return;
-    }
-
-    await Linking.openURL(landing.ctaUrl);
-  };
+  const visible =
+    Boolean(landing?.headline) &&
+    landingActive &&
+    landingStatus === "live" &&
+    !landingSeen;
+  const isCompact = screenWidth < 390;
+  const cardWidth = Math.min(screenWidth - 18, 420);
+  const cardHeight = Math.min(screenHeight * 0.86, 760);
+  const horizontalPadding = isCompact ? 22 : 28;
+  const topPadding = isCompact ? 24 : 30;
+  const contentTopInset = Math.max(cardHeight * 0.31, isCompact ? 190 : 220);
+  const headlineSize = isCompact ? 46 : 54;
+  const headlineLineHeight = isCompact ? 48 : 56;
 
   return (
     <Modal
       visible={visible}
       animationType="fade"
-      transparent={true}
+      transparent
       statusBarTranslucent
       onRequestClose={dismissLanding}
     >
-      {/* Dark overlay */}
       <View style={styles.overlay}>
-        {/* Popup card — almost full screen */}
-        <View style={styles.popup}>
-          {/* ✕ Close button — top right, always visible */}
-          <Pressable
-            style={styles.closeBtn}
-            onPress={dismissLanding}
-            hitSlop={12}
-          >
-            <Ionicons name="close" size={22} color="#fff" />
-          </Pressable>
-
-          {/* Hero area */}
+        <View
+          style={[
+            styles.card,
+            {
+              width: cardWidth,
+              height: cardHeight,
+              borderRadius: isCompact ? 30 : 36,
+            },
+          ]}
+        >
+          <View style={styles.backdropBase} />
           {landing?.imageUrl ? (
             <Image
               source={{ uri: landing.imageUrl }}
-              style={styles.heroImage}
+              style={styles.backdropImage}
               resizeMode="cover"
             />
-          ) : (
-            <View style={styles.heroGradient}>
-              {/* Decorative circles */}
-              <View style={styles.decoCircle1} />
-              <View style={styles.decoCircle2} />
-              <View style={styles.decoCircle3} />
-              <View style={styles.heroIconWrap}>
-                <Ionicons name="megaphone" size={48} color="#fff" />
-              </View>
-            </View>
-          )}
+          ) : null}
+          <View style={styles.backdropTint} />
+          <View style={styles.topShade} />
+          <View style={styles.bottomShade} />
+          <View style={[styles.glowOrb, styles.glowLeft]} />
+          <View style={[styles.glowOrb, styles.glowRight]} />
+          <View pointerEvents="none" style={styles.innerBorder} />
 
-          {/* Scrollable content */}
+          <Pressable
+            style={[
+              styles.closeButton,
+              { top: topPadding, right: horizontalPadding },
+            ]}
+            onPress={dismissLanding}
+            hitSlop={12}
+          >
+            <Ionicons name="close" size={22} color="#5B6B83" />
+          </Pressable>
+
           <ScrollView
             style={styles.contentScroll}
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[
+              styles.content,
+              {
+                paddingHorizontal: horizontalPadding,
+                paddingTop: contentTopInset,
+                paddingBottom: isCompact ? 24 : 30,
+              },
+            ]}
             showsVerticalScrollIndicator={false}
+            bounces={false}
           >
-            {/* Sponsored badge */}
-            <View style={styles.sponsoredBadge}>
-              <Ionicons name="star" size={11} color="#EAB308" />
-              <Text style={styles.sponsoredText}>SPONSORED</Text>
-            </View>
-            <View style={styles.metaRow}>
-              <View style={styles.metaPill}>
-                <Text style={styles.metaPillText}>
-                  {landing?.tokenCost ?? LANDING_PROMO_TOKEN_COST} tokens
-                </Text>
-              </View>
-              <View style={styles.metaPill}>
-                <Text style={styles.metaPillText}>
-                  {landing?.durationHours ?? LANDING_PROMO_DURATION_HOURS} hrs
-                </Text>
-              </View>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {landing?.badgeText?.trim() || "NEW UPDATE"}
+              </Text>
             </View>
 
-            {/* Headline */}
-            <Text style={styles.headline}>{landing?.headline}</Text>
+            <Text
+              style={[
+                styles.headline,
+                { fontSize: headlineSize, lineHeight: headlineLineHeight },
+              ]}
+            >
+              {landing?.headline}
+            </Text>
 
-            {/* Body */}
-            <Text style={styles.body}>{landing?.body}</Text>
-
-            {/* CTA link if present */}
-            {landing?.ctaUrl ? (
-              <Pressable
-                style={styles.ctaLink}
-                onPress={() => {
-                  void handleCtaPress();
-                }}
-              >
-                <Text style={styles.ctaLinkText}>
-                  {landing.ctaText ?? "Learn more"}
-                </Text>
-                <Ionicons name="open-outline" size={16} color="#2563EB" />
-              </Pressable>
+            {landing?.body ? (
+              <Text style={[styles.body, isCompact && styles.bodyCompact]}>
+                {landing.body}
+              </Text>
             ) : null}
           </ScrollView>
-
-          {/* Bottom CTA */}
-          <View style={styles.footer}>
-            {landing?.ctaUrl ? (
-              <Pressable
-                style={styles.ctaBtn}
-                onPress={() => {
-                  void handleCtaPress();
-                }}
-              >
-                <Text style={styles.ctaBtnText}>
-                  {landing.ctaText ?? "Learn More"}
-                </Text>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
-              </Pressable>
-            ) : null}
-
-            <Pressable style={styles.dismissBtn} onPress={dismissLanding}>
-              <Text style={styles.dismissText}>Continue to App</Text>
-            </Pressable>
-          </View>
         </View>
       </View>
     </Modal>
@@ -159,79 +122,77 @@ export function LandingModal() {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: "rgba(2, 6, 23, 0.78)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 12,
+    padding: 9,
   },
-  popup: {
-    width: SCREEN_W - 24,
-    height: SCREEN_H * 0.88,
-    backgroundColor: "#fff",
-    borderRadius: 24,
+  card: {
+    backgroundColor: "#050B16",
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
+    shadowColor: "#020617",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.42,
+    shadowRadius: 32,
     elevation: 20,
   },
-  closeBtn: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    zIndex: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
+  backdropBase: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#08111E",
   },
-  heroImage: {
+  backdropImage: {
+    ...StyleSheet.absoluteFillObject,
     width: "100%",
-    height: 220,
+    height: "100%",
+    opacity: 0.72,
   },
-  heroGradient: {
-    width: "100%",
-    height: 220,
-    backgroundColor: "#2563EB",
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
+  backdropTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(4, 10, 24, 0.24)",
   },
-  decoCircle1: {
+  topShade: {
     position: "absolute",
-    width: 260,
+    top: 0,
+    left: 0,
+    right: 0,
     height: 260,
-    borderRadius: 130,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    top: -80,
-    right: -60,
+    backgroundColor: "rgba(8, 15, 30, 0.08)",
   },
-  decoCircle2: {
+  bottomShade: {
     position: "absolute",
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    bottom: -40,
-    left: -30,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 330,
+    backgroundColor: "rgba(2, 6, 23, 0.58)",
   },
-  decoCircle3: {
+  glowOrb: {
     position: "absolute",
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    top: 30,
-    left: 40,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: "rgba(255, 211, 152, 0.12)",
   },
-  heroIconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: "rgba(255,255,255,0.15)",
+  glowLeft: {
+    top: 62,
+    left: -28,
+  },
+  glowRight: {
+    top: 70,
+    right: -10,
+  },
+  innerBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.08)",
+  },
+  closeButton: {
+    position: "absolute",
+    zIndex: 2,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(241, 245, 249, 0.92)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -239,95 +200,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 24,
-    paddingBottom: 8,
+    flexGrow: 1,
+    justifyContent: "flex-end",
   },
-  sponsoredBadge: {
-    flexDirection: "row",
-    alignItems: "center",
+  badge: {
     alignSelf: "flex-start",
-    gap: 5,
-    backgroundColor: "#FFFBEB",
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    marginBottom: 16,
-  },
-  sponsoredText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#92400E",
-    letterSpacing: 0.8,
-  },
-  metaRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 16,
-  },
-  metaPill: {
     borderRadius: 999,
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "rgba(78, 131, 255, 0.78)",
+    backgroundColor: "rgba(23, 60, 163, 0.25)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 24,
   },
-  metaPillText: {
+  badgeText: {
+    color: "#E2E8F0",
     fontSize: 12,
-    fontWeight: "600",
-    color: "#4B5563",
+    fontWeight: "800",
+    letterSpacing: 2,
   },
   headline: {
-    fontSize: 28,
+    color: "#F8FAFC",
     fontWeight: "800",
-    color: "#1F2937",
-    marginBottom: 14,
-    lineHeight: 34,
+    letterSpacing: -1.8,
+    marginBottom: 18,
   },
   body: {
-    fontSize: 15,
-    color: "#6B7280",
-    lineHeight: 23,
-    marginBottom: 16,
+    fontSize: 17,
+    lineHeight: 30,
+    color: "rgba(226, 232, 240, 0.82)",
+    marginBottom: 8,
   },
-  ctaLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 4,
-  },
-  ctaLinkText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#2563EB",
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-    paddingTop: 8,
-    gap: 10,
-  },
-  ctaBtn: {
-    backgroundColor: "#2563EB",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    borderRadius: 14,
-    gap: 8,
-  },
-  ctaBtnText: {
-    color: "#fff",
+  bodyCompact: {
     fontSize: 16,
-    fontWeight: "700",
-  },
-  dismissBtn: {
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  dismissText: {
-    color: "#9CA3AF",
-    fontSize: 14,
-    fontWeight: "600",
+    lineHeight: 28,
+    marginBottom: 6,
   },
 });

@@ -20,6 +20,7 @@ import {
     Alert,
     Dimensions,
     Image,
+    Modal,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -42,6 +43,7 @@ export default function PostDetailScreen() {
   const [startingConversation, setStartingConversation] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
   const [messageLockActive, setMessageLockActive] = useState(false);
+  const [viewerVisible, setViewerVisible] = useState(false);
 
   useEffect(() => {
     void fetchPost();
@@ -175,7 +177,8 @@ export default function PostDetailScreen() {
   const showContactAction = messagingReady && !canDelete;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {post.imageUrls.length > 0 ? (
         <View style={styles.imageContainer}>
           <ScrollView
@@ -190,12 +193,19 @@ export default function PostDetailScreen() {
             }}
           >
             {post.imageUrls.map((url, index) => (
-              <Image
+              <Pressable
                 key={index}
-                source={{ uri: url }}
-                style={styles.postImage}
-                resizeMode="cover"
-              />
+                onPress={() => {
+                  setImageIndex(index);
+                  setViewerVisible(true);
+                }}
+              >
+                <Image
+                  source={{ uri: url }}
+                  style={styles.postImage}
+                  resizeMode="cover"
+                />
+              </Pressable>
             ))}
           </ScrollView>
           {post.imageUrls.length > 1 ? (
@@ -325,7 +335,55 @@ export default function PostDetailScreen() {
           </View>
         ) : null}
       </View>
-    </ScrollView>
+      </ScrollView>
+
+      <Modal
+        visible={viewerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewerVisible(false)}
+      >
+        <View style={styles.viewerBackdrop}>
+          <Pressable
+            style={styles.viewerClose}
+            onPress={() => setViewerVisible(false)}
+          >
+            <Ionicons name="close" size={28} color="#fff" />
+          </Pressable>
+
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            contentOffset={{ x: imageIndex * SCREEN_WIDTH, y: 0 }}
+            onMomentumScrollEnd={(event) => {
+              const nextIndex = Math.round(
+                event.nativeEvent.contentOffset.x / SCREEN_WIDTH,
+              );
+              setImageIndex(nextIndex);
+            }}
+          >
+            {post.imageUrls.map((url, index) => (
+              <View key={index} style={styles.viewerSlide}>
+                <Image
+                  source={{ uri: url }}
+                  style={styles.viewerImage}
+                  resizeMode="contain"
+                />
+              </View>
+            ))}
+          </ScrollView>
+
+          {post.imageUrls.length > 1 ? (
+            <View style={styles.viewerCount}>
+              <Text style={styles.viewerCountText}>
+                {imageIndex + 1} / {post.imageUrls.length}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -341,6 +399,48 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, color: "#6B7280" },
   imageContainer: { position: "relative" },
   postImage: { width: SCREEN_WIDTH, height: 300 },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.96)",
+    justifyContent: "center",
+  },
+  viewerClose: {
+    position: "absolute",
+    top: 52,
+    right: 20,
+    zIndex: 2,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewerSlide: {
+    width: SCREEN_WIDTH,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  viewerImage: {
+    width: SCREEN_WIDTH - 24,
+    height: "80%",
+  },
+  viewerCount: {
+    position: "absolute",
+    bottom: 40,
+    alignSelf: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  viewerCountText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
   dots: {
     position: "absolute",
     bottom: 12,
