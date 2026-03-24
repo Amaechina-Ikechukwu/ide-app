@@ -159,7 +159,7 @@ export function AnnouncementBanner({ slots, roundId }: BannerCarouselProps) {
         </ScrollView>
       )}
 
-      {/* Dot indicators + Promote button */}
+      {/* Dot indicators */}
       <View style={styles.footer}>
         <View style={styles.dotsRow}>
           {slots.map((_, i) => (
@@ -169,13 +169,6 @@ export function AnnouncementBanner({ slots, roundId }: BannerCarouselProps) {
             />
           ))}
         </View>
-        <Pressable
-          style={styles.promoteBtn}
-          onPress={() => router.push("/banner-bid" as never)}
-        >
-          <Ionicons name="megaphone" size={14} color="#2563EB" />
-          <Text style={styles.promoteBtnText}>Promote</Text>
-        </Pressable>
       </View>
     </View>
   );
