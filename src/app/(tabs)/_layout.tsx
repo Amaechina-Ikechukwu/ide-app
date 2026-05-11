@@ -3,8 +3,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
 import { StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
   const unreadMessageCount = useStore((state) => state.unreadMessageCount);
   const messageBadge =
     unreadMessageCount > 0
@@ -19,7 +21,13 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: "#2563EB",
         tabBarInactiveTintColor: "#9CA3AF",
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 60 + insets.bottom,
+            paddingBottom: 8 + insets.bottom,
+          },
+        ],
         tabBarLabelStyle: styles.tabLabel,
         tabBarBadgeStyle: styles.tabBadge,
       }}
@@ -88,8 +96,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
-    height: 60,
-    paddingBottom: 8,
     paddingTop: 4,
   },
   tabLabel: {
